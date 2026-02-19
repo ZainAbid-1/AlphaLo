@@ -16,9 +16,38 @@ export default function MockExam() {
   const [showHint, setShowHint] = useState(false);
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
 
-  const topicQuestions = questions.filter(q => q.topicId === topicId);
+  const isFullExam = topicId === 'full-exam';
+  
+  const demoQuestions = [
+    {
+      id: 'demo1',
+      topicId: 'full-exam',
+      text: 'Which of the following is NOT a property of a relation in the relational model?',
+      type: 'multiple-choice' as const,
+      options: [
+        'Each tuple is unique',
+        'The order of tuples matters',
+        'Each attribute has a domain',
+        'Column values are atomic'
+      ],
+      correctAnswer: 1,
+      difficulty: 'easy' as const,
+    },
+    {
+      id: 'demo2',
+      topicId: 'full-exam',
+      text: 'Write a SQL query to find all students who have enrolled in more than 3 courses and have a GPA above 3.5.',
+      type: 'short-answer' as const,
+      difficulty: 'medium' as const,
+    }
+  ];
 
-  if (!topic) {
+  const topicQuestions = isFullExam ? demoQuestions : questions.filter(q => q.topicId === topicId);
+  const displayTopic = isFullExam 
+    ? { id: 'full-exam', topic: 'Relational Model & SQL Basics', phase: 'Full Exam', aiPattern: 'Demo', complexity: 'medium' as const }
+    : topic;
+
+  if (!displayTopic) {
     return <div>Topic not found</div>;
   }
 
@@ -73,7 +102,7 @@ export default function MockExam() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-white">AI Mock Exam Generator</h1>
-                <p className="text-gray-300">{topic.topic}</p>
+                <p className="text-gray-300">{displayTopic.topic}</p>
               </div>
             </div>
 
@@ -139,7 +168,7 @@ export default function MockExam() {
                   </div>
                   <div className="flex justify-between">
                     <span>Estimated Time:</span>
-                    <span className="text-white font-semibold">{topicQuestions.length * 5} minutes</span>
+                    <span className="text-white font-semibold">10 minutes</span>
                   </div>
                   <div className="flex justify-between">
                     <span>AI Hints Available:</span>
