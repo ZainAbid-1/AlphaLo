@@ -53,27 +53,13 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold text-white mb-2">
                 Welcome to Your Personalized Prep Roadmap
               </h1>
-              <p className="text-gray-300 mb-1">
-                <strong>Course:</strong> CS 101: Introduction to Databases
-              </p>
-              <p className="text-gray-300">
-                <strong>Instructor:</strong> Dr. Sarah Mitchell
+              <p className="text-gray-400 text-sm">
+                Select a course and instructor to get started with personalized exam preparation
               </p>
             </div>
             <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
               <Sparkles className="w-8 h-8 text-[#7C3AED]" />
             </div>
-          </div>
-        </div>
-
-        {/* AI Insight Card */}
-        <div className="backdrop-blur-xl bg-[#7C3AED]/10 border border-[#7C3AED]/30 rounded-2xl p-5 mb-8 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-[#7C3AED] mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-white mb-1">AI Recommendation</h3>
-            <p className="text-gray-300 text-sm">
-              Based on Dr. Mitchell's past papers, focus on <strong>Transaction Management</strong> and <strong>Normalization</strong> for Midterm 1. These topics appear in 90% of her exams with scenario-based questions.
-            </p>
           </div>
         </div>
 
@@ -87,7 +73,7 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-xl font-bold text-white">Ready for a Complete Mock Exam?</h3>
                 <p className="text-gray-300 text-sm">
-                  Generate a full-length practice exam covering all topics, styled exactly like Dr. Mitchell's exams
+                  Generate a full-length practice exam covering all topics with personalized question styles
                 </p>
               </div>
             </div>
@@ -106,7 +92,7 @@ export default function Dashboard() {
           <div className="p-6 border-b border-white/20 bg-white/5">
             <h2 className="text-2xl font-bold text-white">Exam Preparation Roadmap</h2>
             <p className="text-gray-300 text-sm mt-1">
-              Week-by-week preparation plan synchronized to Dr. Mitchell's teaching style
+              Week-by-week preparation plan personalized to your instructor's teaching style
             </p>
           </div>
 
@@ -177,7 +163,7 @@ export default function Dashboard() {
               </div>
               <h3 className="text-white font-semibold">Topics Covered</h3>
             </div>
-            <p className="text-3xl font-bold text-white">9</p>
+            <p className="text-3xl font-bold text-white">{topics.length}</p>
             <p className="text-gray-400 text-sm mt-1">Across all exam phases</p>
           </div>
 
@@ -188,8 +174,8 @@ export default function Dashboard() {
               </div>
               <h3 className="text-white font-semibold">Mock Exams Available</h3>
             </div>
-            <p className="text-3xl font-bold text-white">27</p>
-            <p className="text-gray-400 text-sm mt-1">Personalized to Dr. Mitchell</p>
+            <p className="text-3xl font-bold text-white">{topics.length * 3}</p>
+            <p className="text-gray-400 text-sm mt-1">Personalized to your instructor</p>
           </div>
 
           <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6">
@@ -199,7 +185,7 @@ export default function Dashboard() {
               </div>
               <h3 className="text-white font-semibold">High Priority</h3>
             </div>
-            <p className="text-3xl font-bold text-white">4</p>
+            <p className="text-3xl font-bold text-white">{topics.filter(t => t.complexity === 'high').length}</p>
             <p className="text-gray-400 text-sm mt-1">Frequently tested topics</p>
           </div>
         </div>

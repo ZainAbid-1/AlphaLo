@@ -117,22 +117,28 @@ export default function Wizard() {
 
               {/* University Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2">
-                {filteredUniversities.map((uni) => (
-                  <button
-                    key={uni.id}
-                    onClick={() => handleUniversitySelect(uni)}
-                    className="group p-6 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-[#7C3AED]/20"
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl flex items-center justify-center text-white text-2xl font-bold">
-                        {uni.logo}
+                {filteredUniversities.length === 0 ? (
+                  <div className="col-span-full text-center text-gray-400 py-12">
+                    No universities available. Please connect to backend.
+                  </div>
+                ) : (
+                  filteredUniversities.map((uni) => (
+                    <button
+                      key={uni.id}
+                      onClick={() => handleUniversitySelect(uni)}
+                      className="group p-6 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-[#7C3AED]/20"
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl flex items-center justify-center text-white text-2xl font-bold">
+                          {uni.logo}
+                        </div>
+                        <span className="text-white text-center text-sm group-hover:text-[#7C3AED] transition-colors">
+                          {uni.name}
+                        </span>
                       </div>
-                      <span className="text-white text-center text-sm group-hover:text-[#7C3AED] transition-colors">
-                        {uni.name}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -155,24 +161,30 @@ export default function Wizard() {
               </div>
 
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {availableCourses.map((course) => (
-                  <button
-                    key={course.id}
-                    onClick={() => handleCourseSelect(course)}
-                    className="group w-full p-5 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-[1.02] text-left flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-6 h-6 text-white" />
+                {availableCourses.length === 0 ? (
+                  <div className="text-center text-gray-400 py-12">
+                    No courses available for this university. Please connect to backend.
+                  </div>
+                ) : (
+                  availableCourses.map((course) => (
+                    <button
+                      key={course.id}
+                      onClick={() => handleCourseSelect(course)}
+                      className="group w-full p-5 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-[1.02] text-left flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-lg flex items-center justify-center">
+                          <BookOpen className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold">{course.code}</div>
+                          <div className="text-gray-300 text-sm">{course.name}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-white font-semibold">{course.code}</div>
-                        <div className="text-gray-300 text-sm">{course.name}</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
-                  </button>
-                ))}
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -195,32 +207,38 @@ export default function Wizard() {
               </div>
 
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {availableInstructors.map((instructor) => (
-                  <button
-                    key={instructor.id}
-                    onClick={() => handleInstructorSelect(instructor)}
-                    className={`group w-full p-6 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-[1.02] text-left flex items-center justify-between ${
-                      selectedInstructor?.id === instructor.id ? 'bg-[#7C3AED]/20 border-[#7C3AED]' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-full flex items-center justify-center text-white text-xl font-bold">
-                        {instructor.avatar}
+                {availableInstructors.length === 0 ? (
+                  <div className="text-center text-gray-400 py-12">
+                    No instructors available for this course. Please connect to backend.
+                  </div>
+                ) : (
+                  availableInstructors.map((instructor) => (
+                    <button
+                      key={instructor.id}
+                      onClick={() => handleInstructorSelect(instructor)}
+                      className={`group w-full p-6 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-[#7C3AED] rounded-xl transition-all hover:scale-[1.02] text-left flex items-center justify-between ${
+                        selectedInstructor?.id === instructor.id ? 'bg-[#7C3AED]/20 border-[#7C3AED]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-full flex items-center justify-center text-white text-xl font-bold">
+                          {instructor.avatar}
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold text-lg">{instructor.name}</div>
+                          <div className="text-gray-300 text-sm">{instructor.title}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-white font-semibold text-lg">{instructor.name}</div>
-                        <div className="text-gray-300 text-sm">{instructor.title}</div>
-                      </div>
-                    </div>
-                    {selectedInstructor?.id === instructor.id ? (
-                      <div className="w-8 h-8 bg-[#10B981] rounded-full flex items-center justify-center">
-                        <Check className="w-5 h-5 text-white" />
-                      </div>
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
-                    )}
-                  </button>
-                ))}
+                      {selectedInstructor?.id === instructor.id ? (
+                        <div className="w-8 h-8 bg-[#10B981] rounded-full flex items-center justify-center">
+                          <Check className="w-5 h-5 text-white" />
+                        </div>
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
+                      )}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           )}

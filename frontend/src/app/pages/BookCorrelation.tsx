@@ -89,7 +89,7 @@ export default function BookCorrelation() {
                 <div className="bg-[#7C3AED]/10 border border-[#7C3AED]/30 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <AlertTriangle className="w-4 h-4 text-[#7C3AED]" />
-                    <h3 className="font-semibold text-white">Dr. Mitchell's Approach</h3>
+                    <h3 className="font-semibold text-white">Instructor's Approach</h3>
                   </div>
                   <p className="text-gray-300 text-sm leading-relaxed mb-4">
                     {correlation.instructorTwist.notes}
@@ -117,7 +117,7 @@ export default function BookCorrelation() {
                     <div>
                       <h4 className="font-semibold text-yellow-400 text-sm mb-1">Key Difference</h4>
                       <p className="text-gray-300 text-sm">
-                        Dr. Mitchell expects real-world scenario application, not just theoretical knowledge. Always prepare with practical examples.
+                        Your instructor expects real-world scenario application, not just theoretical knowledge. Always prepare with practical examples.
                       </p>
                     </div>
                   </div>
@@ -162,7 +162,7 @@ export default function BookCorrelation() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-3">
                     <Sparkles className="w-4 h-4 text-[#7C3AED]" />
-                    <h3 className="font-semibold text-white">Dr. Mitchell's Version</h3>
+                    <h3 className="font-semibold text-white">Instructor's Version</h3>
                   </div>
                   <div className="bg-gradient-to-br from-[#7C3AED]/10 to-[#9333EA]/10 border border-[#7C3AED]/30 rounded-xl p-4">
                     <p className="text-gray-300 text-sm leading-relaxed mb-4">
@@ -204,7 +204,7 @@ export default function BookCorrelation() {
                     <span className="text-[#10B981] font-semibold">2</span>
                   </div>
                   <p>
-                    <strong className="text-white">Practice with real-world scenarios</strong> - Dr. Mitchell's exams always include practical applications like e-commerce, banking, or ticketing systems.
+                    <strong className="text-white">Practice with real-world scenarios</strong> - Your instructor's exams may include practical applications like e-commerce, banking, or ticketing systems.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
@@ -212,7 +212,7 @@ export default function BookCorrelation() {
                     <span className="text-[#10B981] font-semibold">3</span>
                   </div>
                   <p>
-                    <strong className="text-white">Focus on concurrency issues</strong> - Multi-user scenarios and race conditions are favorite topics in her transaction management questions.
+                    <strong className="text-white">Focus on concurrency issues</strong> - Multi-user scenarios and race conditions are common topics in transaction management questions.
                   </p>
                 </div>
               </div>

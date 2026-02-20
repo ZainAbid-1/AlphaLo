@@ -17,34 +17,10 @@ export default function MockExam() {
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
 
   const isFullExam = topicId === 'full-exam';
-  
-  const demoQuestions = [
-    {
-      id: 'demo1',
-      topicId: 'full-exam',
-      text: 'Which of the following is NOT a property of a relation in the relational model?',
-      type: 'multiple-choice' as const,
-      options: [
-        'Each tuple is unique',
-        'The order of tuples matters',
-        'Each attribute has a domain',
-        'Column values are atomic'
-      ],
-      correctAnswer: 1,
-      difficulty: 'easy' as const,
-    },
-    {
-      id: 'demo2',
-      topicId: 'full-exam',
-      text: 'Write a SQL query to find all students who have enrolled in more than 3 courses and have a GPA above 3.5.',
-      type: 'short-answer' as const,
-      difficulty: 'medium' as const,
-    }
-  ];
 
-  const topicQuestions = isFullExam ? demoQuestions : questions.filter(q => q.topicId === topicId);
+  const topicQuestions = isFullExam ? [] : questions.filter(q => q.topicId === topicId);
   const displayTopic = isFullExam 
-    ? { id: 'full-exam', topic: 'Relational Model & SQL Basics', phase: 'Full Exam', aiPattern: 'Demo', complexity: 'medium' as const }
+    ? { id: 'full-exam', topic: 'Full Exam', phase: 'Full Exam', aiPattern: '', complexity: 'medium' as const }
     : topic;
 
   if (!displayTopic) {
@@ -52,7 +28,9 @@ export default function MockExam() {
   }
 
   const handleStartExam = () => {
-    setExamStarted(true);
+    if (topicQuestions.length > 0) {
+      setExamStarted(true);
+    }
   };
 
   const handleNextQuestion = () => {
@@ -153,7 +131,7 @@ export default function MockExam() {
                   className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#7C3AED] [&::-webkit-slider-thumb]:cursor-pointer"
                 />
                 <div className="flex justify-between mt-2 text-sm text-gray-400">
-                  <span>Matches Dr. Mitchell's style</span>
+                  <span>Matches instructor's style</span>
                   <span>Extra challenging</span>
                 </div>
               </div>
@@ -168,23 +146,30 @@ export default function MockExam() {
                   </div>
                   <div className="flex justify-between">
                     <span>Estimated Time:</span>
-                    <span className="text-white font-semibold">10 minutes</span>
+                    <span className="text-white font-semibold">{topicQuestions.length * 2.5} minutes</span>
                   </div>
                   <div className="flex justify-between">
                     <span>AI Hints Available:</span>
-                    <span className="text-[#10B981] font-semibold">Yes</span>
+                    <span className="text-[#10B981] font-semibold">{topicQuestions.length > 0 ? 'Yes' : 'No'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Start Button */}
-              <button
-                onClick={handleStartExam}
-                className="w-full py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-lg hover:shadow-[#7C3AED]/50 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group"
-              >
-                Start Mock Exam
-                <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              </button>
+              {topicQuestions.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <p className="mb-2">No questions available for this topic.</p>
+                  <p className="text-sm">Please connect to backend to load questions.</p>
+                </div>
+              ) : (
+                <button
+                  onClick={handleStartExam}
+                  className="w-full py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-lg hover:shadow-[#7C3AED]/50 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group"
+                >
+                  Start Mock Exam
+                  <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -284,7 +269,7 @@ export default function MockExam() {
               </button>
               {showHint && (
                 <div className="mt-3 p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl text-gray-300 text-sm">
-                  💡 <strong>Hint from Dr. Mitchell's patterns:</strong> Focus on the practical implications. She often asks about real-world scenarios rather than theoretical definitions. Think about how this concept would apply in a production database system.
+                  💡 <strong>AI Hint:</strong> Focus on the practical implications. Consider real-world scenarios rather than theoretical definitions. Think about how this concept would apply in a production system.
                 </div>
               )}
             </div>

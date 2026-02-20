@@ -161,7 +161,7 @@ export default function Analytics() {
             <div className="flex-1">
               <h3 className="font-semibold text-white mb-2">AI Recommendation</h3>
               <p className="text-gray-300 mb-4">
-                Our AI suggests: <strong className="text-white">You are ready for Midterm 1</strong>, but you should review the following topics because Dr. Mitchell frequently tests them:
+                Based on your performance, we suggest reviewing the following topics:
               </p>
               <div className="space-y-2">
                 {weakSpots.length > 0 ? (
