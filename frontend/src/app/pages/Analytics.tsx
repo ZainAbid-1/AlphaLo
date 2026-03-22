@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { ArrowLeft, TrendingUp, AlertCircle, Target, BookOpen } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { topics, performanceData } from '../data/mockData';
+import { topics, performanceData, PerformanceData } from '../data/mockData';
 
 export default function Analytics() {
   const navigate = useNavigate();
@@ -14,22 +14,22 @@ export default function Analytics() {
   }));
 
   // Calculate overall stats
-  const totalAttempts = Object.values(performanceData).reduce((sum, data) => sum + data.attempts, 0);
+  const totalAttempts = Object.values(performanceData).reduce((sum, data: PerformanceData) => sum + data.attempts, 0);
   const averageScore =
-    Object.values(performanceData).reduce((sum, data) => sum + data.score, 0) /
-    Object.values(performanceData).filter(data => data.attempts > 0).length || 0;
-  const topicsAttempted = Object.values(performanceData).filter(data => data.attempts > 0).length;
+    Object.values(performanceData).reduce((sum, data: PerformanceData) => sum + data.score, 0) /
+    Object.values(performanceData).filter((data: PerformanceData) => data.attempts > 0).length || 0;
+  const topicsAttempted = Object.values(performanceData).filter((data: PerformanceData) => data.attempts > 0).length;
 
   // Find weak spots (score < 70 and attempted)
   const weakSpots = topics.filter(topic => {
     const perf = performanceData[topic.id as keyof typeof performanceData];
-    return perf.attempts > 0 && perf.score < 70;
+    return perf && perf.attempts > 0 && perf.score < 70;
   });
 
   // Find strong areas (score >= 80)
   const strongAreas = topics.filter(topic => {
     const perf = performanceData[topic.id as keyof typeof performanceData];
-    return perf.attempts > 0 && perf.score >= 80;
+    return perf && perf.attempts > 0 && perf.score >= 80;
   });
 
   const getBarColor = (score: number) => {

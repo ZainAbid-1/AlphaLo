@@ -29,6 +29,22 @@ export interface Topic {
   complexity: 'low' | 'medium' | 'high' | null;
 }
 
+export interface PerformanceData {
+  score: number;
+  attempts: number;
+}
+
+export interface Question {
+  id: string;
+  topicId: string;
+  text: string;
+  type: 'multiple-choice' | 'short-answer' | 'essay';
+  difficulty: 'easy' | 'medium' | 'hard';
+  options?: string[];
+  correctAnswer?: number | string;
+  hint?: string;
+}
+
 // --- SELECTION DATA ---
 
 export const universities: University[] = [
@@ -67,8 +83,117 @@ export const topics: Topic[] = [
 
 // --- FEATURE PLACEHOLDERS ---
 
-export const questions = []; // Student A will fill this from Gemini later
+export const questions: Question[] = [
+  // Week 1 - OOP & Java Basics
+  {
+    id: 'q1-1',
+    topicId: 'w1',
+    text: 'What does OOP stand for?',
+    type: 'multiple-choice',
+    difficulty: 'easy',
+    options: ['Object Oriented Programming', 'Object Oriented Protocol', 'Organized Object Pattern', 'Online Object Program'],
+    correctAnswer: 0,
+    hint: 'Hint: It is a programming paradigm...'
+  },
+  {
+    id: 'q1-2',
+    topicId: 'w1',
+    text: 'Explain the concept of encapsulation in your own words.',
+    type: 'short-answer',
+    difficulty: 'medium',
+    hint: 'Think about hiding internal details...'
+  },
+  // Week 2 - Functions, Arrays & Strings
+  {
+    id: 'q2-1',
+    topicId: 'w2',
+    text: 'What is the time complexity of accessing an array element by index?',
+    type: 'multiple-choice',
+    difficulty: 'easy',
+    options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'],
+    correctAnswer: 0
+  },
+  {
+    id: 'q2-2',
+    topicId: 'w2',
+    text: 'Write a function to reverse a string in Java.',
+    type: 'essay',
+    difficulty: 'medium',
+    hint: 'You can use StringBuilder or recursion...'
+  },
+  // Week 3 - Classes and Objects
+  {
+    id: 'q3-1',
+    topicId: 'w3',
+    text: 'What is the difference between a class and an object?',
+    type: 'short-answer',
+    difficulty: 'easy',
+    hint: 'A class is a blueprint...'
+  },
+  // Week 4 - Encapsulation & Constructors
+  {
+    id: 'q4-1',
+    topicId: 'w4',
+    text: 'What is the purpose of a constructor?',
+    type: 'multiple-choice',
+    difficulty: 'easy',
+    options: ['To initialize object state', 'To destroy objects', 'To return values', 'To define methods'],
+    correctAnswer: 0
+  },
+  // Week 5 - Inheritance In Java
+  {
+    id: 'q5-1',
+    topicId: 'w5',
+    text: 'Which keyword is used for inheritance in Java?',
+    type: 'multiple-choice',
+    difficulty: 'easy',
+    options: ['extends', 'implements', 'inherits', 'super'],
+    correctAnswer: 0
+  },
+  // Add more questions for other weeks...
+  {
+    id: 'q6-1',
+    topicId: 'w6',
+    text: 'What is method overriding?',
+    type: 'short-answer',
+    difficulty: 'medium'
+  },
+  {
+    id: 'q7-1',
+    topicId: 'w7',
+    text: 'Explain polymorphism with an example.',
+    type: 'essay',
+    difficulty: 'hard'
+  },
+  {
+    id: 'q8-1',
+    topicId: 'w8',
+    text: 'What is an interface in Java?',
+    type: 'multiple-choice',
+    difficulty: 'medium',
+    options: ['A contract for classes', 'A type of class', 'A loop structure', 'A variable type'],
+    correctAnswer: 0
+  }
+];
 
 export const bookCorrelation = {}; // Student B will fill this from ChromaDB/Gemini later
 
-export const performanceData = {};
+export const performanceData: Record<string, PerformanceData> = {
+  'w1': { score: 85, attempts: 5 },
+  'w2': { score: 78, attempts: 4 },
+  'w3': { score: 92, attempts: 6 },
+  'w4': { score: 65, attempts: 3 },
+  'w5': { score: 88, attempts: 5 },
+  'w6': { score: 75, attempts: 4 },
+  'w7': { score: 82, attempts: 5 },
+  'w8': { score: 70, attempts: 3 },
+  'w9': { score: 0, attempts: 0 },
+  'w10': { score: 80, attempts: 4 },
+  'w11': { score: 72, attempts: 3 },
+  'w12': { score: 68, attempts: 2 },
+  'w13': { score: 0, attempts: 0 },
+  'w14': { score: 0, attempts: 0 },
+  'w15': { score: 0, attempts: 0 },
+  'w16': { score: 0, attempts: 0 },
+  'w17': { score: 0, attempts: 0 }
+};
