@@ -18,7 +18,7 @@ class AIEngine:
         TASK:
         1. Identify any specific Practice Questions, Review Exercises, or Problems in the 
            Textbook Section that test the same concepts found in the Past Paper Pattern.
-        2. Return ONLY the question identifier (e.g., 'Exercise 4.2') and a 10-word summary.
+        2. Return ONLY the question identifier (e.g., 'Exercise 4.2') and the actual question with it.
         3. Do NOT make up new questions. Only extract what is written in the textbook section.
         """
         

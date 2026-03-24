@@ -52,17 +52,17 @@ class VectorService:
         Search the Pinecone Cloud for similar patterns.
         """
         # Convert search pattern to vector
-        query = genai.embed_content(
+        pattern = genai.embed_content(
             model=self.embedding_model,
             content=paper_pattern,
             task_type="RETRIEVAL_QUERY"
         )
-        query_vector = query['embedding']
+        pattern_vector = pattern['embedding']
 
         # include_metadata=True so we can get the text and page numbers back
         results = self.index.query(
-            vector=query_vector,
-            top_k=3,
+            vector=pattern_vector,
+            top_k=5,
             include_metadata=True
         )
         return results

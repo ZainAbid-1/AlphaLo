@@ -15,10 +15,10 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 PINECONE_KEY = os.getenv("PINECONE_API_KEY")
 
 # Distribute the keys
-v_service = VectorService(gemini_api_key=GEMINI_KEY, pinecone_api_key=PINECONE_KEY)
+vector_service = VectorService(gemini_api_key=GEMINI_KEY, pinecone_api_key=PINECONE_KEY)
 ai_engine = AIEngine(api_key=GEMINI_KEY)
 
 # BookService takes the initialized services
-book_service = BookService(vector_service=v_service, ai_engine=ai_engine)
+book_service = BookService(vector_service=vector_service, ai_engine=ai_engine)
 
 # the fastapi route to call book_service.py etc functions will go below from here later
