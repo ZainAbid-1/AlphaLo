@@ -86,8 +86,8 @@ export default function AdminDashboard() {
     const type = uploadData.type;
     
     const endpoint = type === 'textbook' 
-      ? `/api/admin/upload-textbook/${courseId}?title=${title}`
-      : `/api/admin/upload-past-paper/${courseId}?title=${title}`;
+      ? `/admin/upload-textbook/${courseId}?title=${title}`
+      : `/admin/upload-past-paper/${courseId}?title=${title}`;
     
     try {
         const response = await api.post(endpoint, formData); 
