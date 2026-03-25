@@ -41,17 +41,20 @@ class VectorService:
         return len(to_upsert)
 
     def query_textbook(self, paper_pattern: str):
-        # Convert search pattern to vector using NEW Gemini syntax
-        query = self.ai_client.models.embed_content(
+        """
+        Search the Pinecone Cloud for similar patterns.
+        """
+        # Convert search pattern to vector
+        pattern = genai.embed_content(
             model=self.embedding_model,
             contents=paper_pattern,
             config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
         )
-        query_vector = query.embeddings[0].values
+        pattern_vector = pattern['embedding']
 
         results = self.index.query(
-            vector=query_vector,
-            top_k=3,
+            vector=pattern_vector,
+            top_k=5,
             include_metadata=True
         )
         return results
