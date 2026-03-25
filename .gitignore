@@ -5,12 +5,7 @@ __pycache__/
 *$py.class
 .env
 .pytest_cache/
-
-
-# --- Database/Local Storage ---
-backend/vectors/
-*.db
-*.sqlite3
+node_modules/
 
 # --- Frontend ---
 frontend/node_modules/
