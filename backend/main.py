@@ -1,24 +1,23 @@
-import os
-from dotenv import load_dotenv
 from fastapi import FastAPI
-from services.vector_service import VectorService
-from services.ai_engine import AIEngine
-from services.book_service import BookService
-
-# Read the .env file
-load_dotenv()
+from fastapi.middleware.cors import CORSMiddleware
+from database import engine, Base
+from routes import admin, student
 
 app = FastAPI()
 
-# Grab the keys from the env
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-PINECONE_KEY = os.getenv("PINECONE_API_KEY")
+# --- ENABLE CORS FOR REACT FRONTEND ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"], # React Vite defaults
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Distribute the keys
-v_service = VectorService(gemini_api_key=GEMINI_KEY, pinecone_api_key=PINECONE_KEY)
-ai_engine = AIEngine(api_key=GEMINI_KEY)
+@app.on_event("startup")
+def startup():
+    # Automatically creates your tables in alphalo.db
+    Base.metadata.create_all(bind=engine)
 
-# BookService takes the initialized services
-book_service = BookService(vector_service=v_service, ai_engine=ai_engine)
-
-# the fastapi route to call book_service.py etc functions will go below from here later
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(student.router, prefix="/api/student", tags=["Student"])

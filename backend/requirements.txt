@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+google-genai
+pinecone
+python-dotenv
+PyMuPDF
+python-jose
+passlib

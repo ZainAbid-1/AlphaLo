@@ -1,12 +1,11 @@
-import google.generativeai as genai
+from google import genai
 
 class AIEngine:
-    def __init__(self, gemini_api_key: str):
-        genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+    def __init__(self, api_key: str):
+        self.client = genai.Client(api_key=api_key)
+        self.model_id = 'gemini-2.5-flash' # Using the newest fast model
 
     def extract_relevant_questions(self, pattern: str, book_text: str):
-
         prompt = f"""
         You are an academic assistant. 
         I am giving you a 'Past Paper Pattern' and a 'Textbook Section'.
@@ -22,5 +21,8 @@ class AIEngine:
         3. Do NOT make up new questions. Only extract what is written in the textbook section.
         """
         
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_id, 
+            contents=prompt
+        )
         return response.text

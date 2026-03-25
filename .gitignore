@@ -6,6 +6,7 @@ __pycache__/
 .env
 .pytest_cache/
 
+
 # --- Database/Local Storage ---
 backend/vectors/
 *.db
