@@ -11,6 +11,8 @@ class QuestionRecommender:
     def get_book_recommendations(self, exam_questions):
         
         # Connect to the existing Pinecone index
+        # alling PineconeVectorStore automatically goes into the code's .env file and looks for API key
+        # with a name exactly as "PINECONE_API_KEY" and then look for index name provided.
         textbook_searcher = PineconeVectorStore(index_name="txtbook-index", embedding=self.embedding_model)
 
         # Setup the Chain

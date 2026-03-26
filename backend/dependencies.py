@@ -1,17 +1,18 @@
 import os
 from dotenv import load_dotenv
-from services.vector_service import VectorService
-from services.ai_engine import AIEngine
-from services.book_service import BookService
+from services.paper_parser import QuestionExctractor
+from services.textbook_parser import TextbookIngestor
+from services.question_recommender import QuestionRecommender
 
 load_dotenv()
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-PINECONE_KEY = os.getenv("PINECONE_API_KEY")
 
-# Initialize services as singletons
-v_service = VectorService(gemini_api_key=GEMINI_KEY, pinecone_api_key=PINECONE_KEY)
-ai_engine = AIEngine(api_key=GEMINI_KEY)
-book_service = BookService(vector_service=v_service, ai_engine=ai_engine)
+# Initialize the new services once
+extractor = QuestionExctractor(api_key=GEMINI_KEY)
+parser = TextbookIngestor() 
+recommender = QuestionRecommender(gemini_api_key=GEMINI_KEY)
 
-def get_book_service(): return book_service
-def get_ai_engine(): return ai_engine
+# Functions to provide these services to your routes
+def get_question_extractor(): return extractor
+def get_textbook_parser(): return parser
+def get_question_recommender(): return recommender
