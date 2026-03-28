@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2, User } from 'lucide-react';
 import { api } from '../../services/api'; // <-- *** VERIFY THIS PATH ***
   
 export default function AdminDashboard() {
@@ -13,10 +13,12 @@ export default function AdminDashboard() {
   const [courseData, setCourseData] = useState({ id: '', name: '', university_id: '' }); 
   // *** FIX 1: Changed courseId to course_id (snake_case) ***
   const [topicData, setTopicData] = useState({ course_id: '', id: '', week: '', topic: '' }); 
+  const [instructorData, setInstructorData] = useState({ id: '', course_id: '', name: '', title: '', avatar: '' });
   
   // *** FIX 1: Changed courseId to course_id (snake_case) ***
   const [uploadData, setUploadData] = useState({ course_id: '', title: '', type: 'textbook' }); 
   const[selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // --- API HANDLERS (Connects to your FastAPI admin.py) ---
   const showStatus = (type: 'success' | 'error', text: string) => {
@@ -70,6 +72,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAddInstructor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        const params = new URLSearchParams(instructorData).toString();
+        const response = await api.post(`/admin/instructor?${params}`); 
+        
+        console.log('API Response:', response.data);
+        showStatus('success', `Instructor ${instructorData.name} added successfully!`);
+        setInstructorData({ id: '', course_id: '', name: '', title: '', avatar: '' });
+    } catch (error: any) {
+        showStatus('error', `Failed to add instructor. Server Message: ${error.response?.data?.detail || 'Unknown Error'}`);
+        console.error(error);
+    }
+  };
+
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
@@ -90,6 +107,7 @@ export default function AdminDashboard() {
       : `/admin/upload-past-paper/${courseId}?title=${title}`;
     
     try {
+        setIsUploading(true);
         const response = await api.post(endpoint, formData); 
         console.log('API Response:', response.data);
         
@@ -99,6 +117,8 @@ export default function AdminDashboard() {
     } catch (error: any) {
         showStatus('error', `File upload failed. Server Message: ${error.response?.data?.detail || 'Unknown Error'}`);
         console.error(error);
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -249,6 +269,45 @@ export default function AdminDashboard() {
                 </button>
               </form>
             </div>
+
+            {/* Add Instructor */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 h-fit">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-400" /> Add Instructor
+              </h2>
+              <form onSubmit={handleAddInstructor} className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-400">Instructor ID</label>
+                  <input type="text" required placeholder="e.g. inst-jaudat" value={instructorData.id} onChange={e => setInstructorData({...instructorData, id: e.target.value})}
+                    className="w-full mt-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Target Course ID</label>
+                  <input type="text" required value={instructorData.course_id} onChange={e => setInstructorData({...instructorData, course_id: e.target.value})}
+                    className="w-full mt-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Instructor Name</label>
+                  <input type="text" required value={instructorData.name} onChange={e => setInstructorData({...instructorData, name: e.target.value})}
+                    className="w-full mt-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-sm text-gray-400">Title</label>
+                    <input type="text" required placeholder="e.g. Professor" value={instructorData.title} onChange={e => setInstructorData({...instructorData, title: e.target.value})}
+                      className="w-full mt-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400">Avatar (Initials)</label>
+                    <input type="text" required placeholder="e.g. JM" value={instructorData.avatar} onChange={e => setInstructorData({...instructorData, avatar: e.target.value})}
+                      className="w-full mt-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400" />
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-2 bg-white/10 hover:bg-blue-500 hover:text-white text-white rounded-lg transition-colors flex justify-center items-center gap-2">
+                  <Plus className="w-4 h-4" /> Save Instructor
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
@@ -323,9 +382,11 @@ export default function AdminDashboard() {
 
               <button 
                 type="submit" 
-                className="w-full py-4 bg-gradient-to-r from-[#10B981] to-[#059669] hover:shadow-lg hover:shadow-[#10B981]/40 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2"
+                disabled={isUploading}
+                className={`w-full py-4 bg-gradient-to-r from-[#10B981] to-[#059669] hover:shadow-lg hover:shadow-[#10B981]/40 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <Database className="w-5 h-5" /> Process & Vectorize Document
+                <Database className={`w-5 h-5 ${isUploading ? 'animate-pulse' : ''}`} /> 
+                {isUploading ? 'Processing & Vectorizing (This may take a minute)...' : 'Process & Vectorize Document'}
               </button>
             </form>
           </div>

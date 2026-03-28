@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Check, ChevronRight, GraduationCap, BookOpen, User } from 'lucide-react';
-import { universities, courses, instructors, University, Course, Instructor } from '../data/mockData';
+import { University, Course, Instructor } from '../data/mockData';
+import { api } from '../../services/api';
 
 export default function Wizard() {
   const navigate = useNavigate();
@@ -10,32 +11,47 @@ export default function Wizard() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+
+  useEffect(() => {
+    // Fetch available universities on mount
+    api.get('/student/universities')
+      .then(res => setUniversities(res.data))
+      .catch(err => console.error("Failed to load universities", err));
+  }, []);
 
   const filteredUniversities = universities.filter(uni =>
     uni.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const availableCourses = selectedUniversity
-    ? courses.filter(c => c.universityId === selectedUniversity.id)
-    : [];
-
-  const availableInstructors = selectedCourse
-    ? instructors.filter(i => i.courseId === selectedCourse.id)
-    : [];
+  const availableCourses = courses; // Fetched specific for selected uni below
+  const availableInstructors = instructors; // Fetched specific for selected course below
 
   const handleUniversitySelect = (uni: University) => {
     setSelectedUniversity(uni);
+    api.get(`/student/courses/${uni.id}`)
+      .then(res => setCourses(res.data))
+      .catch(err => console.error("Failed to load courses", err));
     setStep(2);
     setSearchQuery('');
   };
 
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course);
+    api.get(`/student/instructors/${course.id}`)
+      .then(res => setInstructors(res.data))
+      .catch(err => console.error("Failed to load instructors", err));
     setStep(3);
   };
 
   const handleInstructorSelect = (instructor: Instructor) => {
     setSelectedInstructor(instructor);
+    // In a real app we'd save this to global auth context or local storage
+    localStorage.setItem('selectedInstructorName', instructor.name);
+    
     // Navigate to dashboard after a brief delay
     setTimeout(() => {
       navigate('/dashboard');
@@ -119,7 +135,7 @@ export default function Wizard() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2">
                 {filteredUniversities.length === 0 ? (
                   <div className="col-span-full text-center text-gray-400 py-12">
-                    No universities available. Please connect to backend.
+                    No universities found. Have you seeded the database?
                   </div>
                 ) : (
                   filteredUniversities.map((uni) => (
@@ -163,7 +179,7 @@ export default function Wizard() {
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                 {availableCourses.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
-                    No courses available for this university. Please connect to backend.
+                    No courses available for this university. Please seed the backend.
                   </div>
                 ) : (
                   availableCourses.map((course) => (
@@ -209,7 +225,14 @@ export default function Wizard() {
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                 {availableInstructors.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
-                    No instructors available for this course. Please connect to backend.
+                    No distinct instructors found for this course yet.
+                    {/* Fallback option if using generic data */}
+                    <button
+                       onClick={() => handleInstructorSelect({ id: 'dummy', courseId: selectedCourse?.id || '', name: 'Default Instructor', title: 'Professor', avatar: 'Prof' })}
+                       className="mt-4 px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-[#9333EA] transition"
+                    >
+                      Use Default Instructor
+                    </button>
                   </div>
                 ) : (
                   availableInstructors.map((instructor) => (

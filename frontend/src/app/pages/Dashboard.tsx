@@ -1,12 +1,30 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { GraduationCap, Sparkles, BookOpen, BarChart3, LogOut, AlertCircle, Clock } from 'lucide-react';
-import { topics, instructors } from '../data/mockData';
+import { Topic } from '../data/mockData';
+import { api } from '../../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Get current instructor name (Defaulting to the first one in mockData)
-  const currentInstructor = instructors[0]?.name || "Selected Instructor";
+  // Get current instructor name from Wizard selection
+  const currentInstructor = localStorage.getItem('selectedInstructorName') || "Your Instructor";
+
+  useEffect(() => {
+    // Fetch roadmap for 'cs-oop-java' course
+    api.get('/student/roadmap/cs-oop-java')
+      .then(response => {
+        setTopics(response.data);
+      })
+      .catch(error => {
+        console.error("Failed to fetch roadmap:", error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   // Helper function to handle complexity colors (Added default for null)
   const getComplexityColor = (complexity: string | null) => {
@@ -102,60 +120,71 @@ export default function Dashboard() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/20 bg-white/5">
-                  <th className="text-left p-4 text-white font-semibold">Timeline</th>
-                  <th className="text-left p-4 text-white font-semibold">Topic</th>
-                  <th className="text-left p-4 text-white font-semibold">AI Style Insight</th>
-                  <th className="text-left p-4 text-white font-semibold">Complexity</th>
-                  <th className="text-left p-4 text-white font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topics.map((topic, index) => (
-                  <tr
-                    key={topic.id}
-                    className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
-                      index % 2 === 0 ? 'bg-white/[0.02]' : ''
-                    }`}
-                  >
-                    <td className="p-4">
-                      <span className="inline-block px-3 py-1 bg-[#1A2B48] border border-[#7C3AED]/30 rounded-lg text-white text-xs font-medium">
-                        {topic.phase}
-                      </span>
-                    </td>
-                    <td className="p-4 text-white font-medium">{topic.topic}</td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 text-gray-500" />
-                        <span className="text-gray-400 text-xs">
-                          {topic.aiPattern ? topic.aiPattern : "Analyzing past papers..."}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-lg text-[10px] font-bold border ${getComplexityColor(
-                          topic.complexity
-                        )}`}
-                      >
-                        {topic.complexity ? topic.complexity.toUpperCase() : "PENDING"}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => navigate(`/correlation/${topic.id}`)}
-                        className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Book Patterns
-                      </button>
-                    </td>
+            {loading ? (
+              <div className="p-8 text-center text-white">Loading syllabus topics...</div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/20 bg-white/5">
+                    <th className="text-left p-4 text-white font-semibold">Timeline</th>
+                    <th className="text-left p-4 text-white font-semibold">Topic</th>
+                    <th className="text-left p-4 text-white font-semibold">AI Style Insight</th>
+                    <th className="text-left p-4 text-white font-semibold">Complexity</th>
+                    <th className="text-left p-4 text-white font-semibold">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topics.map((topic, index) => (
+                    <tr
+                      key={topic.id}
+                      className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
+                        index % 2 === 0 ? 'bg-white/[0.02]' : ''
+                      }`}
+                    >
+                      <td className="p-4">
+                        <span className="inline-block px-3 py-1 bg-[#1A2B48] border border-[#7C3AED]/30 rounded-lg text-white text-xs font-medium">
+                          {topic.phase || `Week ${topic.week_number || ''}`}
+                        </span>
+                      </td>
+                      <td className="p-4 text-white font-medium">{topic.topic}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3 text-gray-500" />
+                          <span className="text-gray-400 text-xs">
+                            {topic.aiPattern ? topic.aiPattern : "Analyzing past papers..."}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-lg text-[10px] font-bold border ${getComplexityColor(
+                            topic.complexity
+                          )}`}
+                        >
+                          {topic.complexity ? topic.complexity.toUpperCase() : "PENDING"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => navigate(`/correlation/${topic.id}`)}
+                          className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          Book Patterns
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {topics.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-400">
+                        No syllabus topics found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

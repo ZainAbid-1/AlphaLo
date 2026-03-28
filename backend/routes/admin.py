@@ -1,15 +1,20 @@
+# backend/routes/admin.py
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Course, Textbook, PastPaper, SyllabusTopic, University
+from models import Course, Textbook, PastPaper, SyllabusTopic, University, Instructor
+import os
 
-# Import our new PDF processor and the Vector Service singleton
-from services.pdf_processor import extract_text_from_pdf, extract_full_text
-from dependencies import v_service 
+# *** CORRECTED IMPORTS based on your file structure ***
+from dependencies import get_textbook_parser, get_question_extractor # Import the new service providers
+from services.textbook_parser import TextbookIngestor # Import the class itself for type hinting if needed
+
+# Assuming you might use the extractor for past papers, and the parser for textbooks
+# Note: We are NOT using v_service/vector_service anymore.
 
 router = APIRouter()
 
-# --- 1. CURRICULUM SETUP ---
+# --- 1. CURRICULUM SETUP (These remain the same) ---
 @router.post("/university")
 def add_university(id: str, name: str, db: Session = Depends(get_db)):
     db.add(University(id=id, name=name))
@@ -28,44 +33,80 @@ def add_topic(course_id: str, id: str, week: int, topic: str, db: Session = Depe
     db.commit()
     return {"status": "Topic added"}
 
-# --- 2. KNOWLEDGE BASE UPLOADS ---
+@router.post("/instructor")
+def add_instructor(id: str, course_id: str, name: str, title: str, avatar: str, db: Session = Depends(get_db)):
+    db.add(Instructor(id=id, course_id=course_id, name=name, title=title, avatar=avatar))
+    db.commit()
+    return {"status": "Instructor added"}
+
 @router.post("/upload-textbook/{course_id}")
-async def upload_textbook(course_id: str, title: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+# *** FIX: Inject the parser directly into the function signature ***
+async def upload_textbook(course_id: str, title: str, file: UploadFile = File(...), 
+                          db: Session = Depends(get_db), 
+                          parser: TextbookIngestor = Depends(get_textbook_parser)): # <-- MOVED DEPENDENCY HERE
+
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
 
     file_bytes = await file.read()
     
-    # 1. Extract text page by page
-    pages_data = extract_text_from_pdf(file_bytes)
-    if not pages_data:
-        raise HTTPException(status_code=400, detail="Could not extract text. Is this a scanned image?")
+    # Removed the line: parser: TextbookIngestor = Depends(get_textbook_parser()) 
+    
+    # 1. Save file temporarily so LangChain can read the path
+    temp_file_path = f"backend/temp_uploads/{file.filename}"
+    if not os.path.exists("backend/temp_uploads"):
+        os.makedirs("backend/temp_uploads") 
+        
+    with open(temp_file_path, "wb") as buffer: 
+        buffer.write(file_bytes)
 
-    # 2. Save reference to SQLite DB
-    db.add(Textbook(course_id=course_id, title=title, file_path=file.filename))
-    db.commit()
-    
-    # 3. VECTORIZE AND SEND TO PINECONE CLOUD via Gemini
-    # Note: Ensure your .env has GEMINI_API_KEY and PINECONE_API_KEY set
     try:
-        chunks_indexed = v_service.index_textbook(book_title=title, pages=pages_data)
+        # 2. Use LangChain PDF Parser to load document
+        data = parser.pdf_parser(temp_file_path)
+        # 3. Chunk the data
+        chunks = parser.data_chunking(data)
+        # 4. Vectorize and upload to Pinecone
+        vectors = parser.vectorization(chunks)
+        
+        db.add(Textbook(course_id=course_id, title=title, file_path=temp_file_path))
+        db.commit()
+        
+        return {"status": "Textbook uploaded & vectorized!", "pages_processed": len(chunks)}
     except Exception as e:
+        # Return a clearer error message from the exception
         raise HTTPException(status_code=500, detail=f"AI Vectorization failed: {str(e)}")
-    
-    return {"status": "Textbook uploaded & vectorized!", "pages_processed": chunks_indexed}
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
 
 @router.post("/upload-past-paper/{course_id}")
-async def upload_past_paper(course_id: str, title: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+# *** FIX: Inject the extractor directly into the function signature ***
+async def upload_past_paper(course_id: str, title: str, file: UploadFile = File(...), 
+                            db: Session = Depends(get_db),
+                            extractor=Depends(get_question_extractor)): # Use a name like 'extractor'
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
 
     file_bytes = await file.read()
     
-    # 1. Extract as one massive string blueprint
-    full_text = extract_full_text(file_bytes)
-    
-    # 2. Save to DB as the AI's "Blueprint" for this course
-    db.add(PastPaper(course_id=course_id, paper_title=title, raw_content=full_text))
-    db.commit()
-    
-    return {"status": "Past Paper extracted and saved as AI Blueprint"}
+    temp_file_path = f"backend/temp_uploads/{file.filename}"
+    if not os.path.exists("backend/temp_uploads"):
+        os.makedirs("backend/temp_uploads")
+        
+    with open(temp_file_path, "wb") as buffer: 
+        buffer.write(file_bytes)
+        
+    try:
+        # Use the injected extractor service
+        exam_text = extractor.exam_parser(temp_file_path)
+        
+        db.add(PastPaper(course_id=course_id, paper_title=title, raw_content=exam_text))
+        db.commit()
+        
+        return {"status": "Past Paper extracted and saved as AI Blueprint"}
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)

@@ -1,7 +1,9 @@
 import json
 from langchain_community.document_loaders import PyPDFLoader # pyright: ignore[reportMissingImports]
 from google import genai
+import logging
 
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 class QuestionExctractor:
     def __init__(self, api_key: str):
         self.llm = genai.Client(api_key=api_key)

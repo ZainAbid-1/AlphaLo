@@ -7,6 +7,14 @@ class Course(Base):
     university_id = Column(String, ForeignKey("universities.id"))
     name = Column(String)
 
+class Instructor(Base):
+    __tablename__ = "instructors"
+    id = Column(String, primary_key=True)
+    course_id = Column(String, ForeignKey("courses.id"))
+    name = Column(String)
+    title = Column(String)
+    avatar = Column(String)
+
 class SyllabusTopic(Base):
     __tablename__ = "syllabus_topics"
     id = Column(String, primary_key=True)  # e.g., 'w1'
@@ -53,4 +61,23 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String) # Stores the hashed password, NOT the plain text
-    role = Column(String, default="student") # 'admin' or 'student'          
+    role = Column(String, default="student") # 'admin' or 'student'
+
+class Performance(Base):
+    __tablename__ = "performance"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    topic_id = Column(String, ForeignKey("syllabus_topics.id"))
+    score = Column(Integer, default=0)
+    attempts = Column(Integer, default=0)
+
+class Question(Base):
+    __tablename__ = "questions"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    topic_id = Column(String, ForeignKey("syllabus_topics.id"))
+    text = Column(String)
+    question_type = Column(String) # e.g., 'multiple-choice', 'short-answer', 'essay'
+    difficulty = Column(String) # e.g., 'easy', 'medium', 'hard'
+    options = Column(String, nullable=True) # JSON string for choices
+    correct_answer = Column(String, nullable=True)
+    hint = Column(String, nullable=True)

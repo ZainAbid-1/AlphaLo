@@ -1,34 +1,61 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, TrendingUp, AlertCircle, Target, BookOpen } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { topics, performanceData, PerformanceData } from '../data/mockData';
+import { PerformanceData, Topic } from '../data/mockData';
+import { api } from '../../services/api';
 
 export default function Analytics() {
   const navigate = useNavigate();
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [performanceData, setPerformanceData] = useState<Record<string, PerformanceData>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/student/roadmap/cs-oop-java'),
+      api.get('/student/performance/1') // Hardcoded user_id=1 for now
+    ])
+    .then(([topicsRes, perfRes]) => {
+      setTopics(topicsRes.data);
+      setPerformanceData(perfRes.data);
+    })
+    .catch(err => console.error("Error fetching analytics:", err))
+    .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8 text-white flex items-center justify-center">
+        Loading analytics...
+      </div>
+    );
+  }
 
   // Prepare data for the chart
   const chartData = topics.map(topic => ({
     name: topic.topic.length > 20 ? topic.topic.substring(0, 20) + '...' : topic.topic,
-    score: performanceData[topic.id as keyof typeof performanceData]?.score || 0,
-    attempts: performanceData[topic.id as keyof typeof performanceData]?.attempts || 0,
+    score: performanceData[topic.id]?.score || 0,
+    attempts: performanceData[topic.id]?.attempts || 0,
   }));
 
   // Calculate overall stats
-  const totalAttempts = Object.values(performanceData).reduce((sum, data: PerformanceData) => sum + data.attempts, 0);
-  const averageScore =
-    Object.values(performanceData).reduce((sum, data: PerformanceData) => sum + data.score, 0) /
-    Object.values(performanceData).filter((data: PerformanceData) => data.attempts > 0).length || 0;
-  const topicsAttempted = Object.values(performanceData).filter((data: PerformanceData) => data.attempts > 0).length;
+  const totalAttempts = Object.values(performanceData).reduce((sum, data) => sum + data.attempts, 0);
+  const attemptedData = Object.values(performanceData).filter(data => data.attempts > 0);
+  const averageScore = attemptedData.length > 0 
+    ? attemptedData.reduce((sum, data) => sum + data.score, 0) / attemptedData.length 
+    : 0;
+  const topicsAttempted = attemptedData.length;
 
   // Find weak spots (score < 70 and attempted)
   const weakSpots = topics.filter(topic => {
-    const perf = performanceData[topic.id as keyof typeof performanceData];
+    const perf = performanceData[topic.id];
     return perf && perf.attempts > 0 && perf.score < 70;
   });
 
   // Find strong areas (score >= 80)
   const strongAreas = topics.filter(topic => {
-    const perf = performanceData[topic.id as keyof typeof performanceData];
+    const perf = performanceData[topic.id];
     return perf && perf.attempts > 0 && perf.score >= 80;
   });
 
@@ -173,7 +200,7 @@ export default function Analytics() {
                       <div>
                         <div className="text-white font-medium">{topic.topic}</div>
                         <div className="text-sm text-gray-400">
-                          Current Score: {performanceData[topic.id as keyof typeof performanceData].score}% • {performanceData[topic.id as keyof typeof performanceData].attempts} attempts
+                          Current Score: {performanceData[topic.id]?.score}% • {performanceData[topic.id]?.attempts} attempts
                         </div>
                       </div>
                       <button
@@ -210,10 +237,10 @@ export default function Analytics() {
                   <div className="text-white font-medium mb-1">{topic.topic}</div>
                   <div className="flex items-center gap-2">
                     <div className="text-2xl font-bold text-[#10B981]">
-                      {performanceData[topic.id as keyof typeof performanceData].score}%
+                      {performanceData[topic.id]?.score}%
                     </div>
                     <div className="text-sm text-gray-400">
-                      {performanceData[topic.id as keyof typeof performanceData].attempts} attempts
+                      {performanceData[topic.id]?.attempts} attempts
                     </div>
                   </div>
                 </div>

@@ -10,7 +10,7 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 # Initialize the new services once
 extractor = QuestionExctractor(api_key=GEMINI_KEY)
 parser = TextbookIngestor() 
-recommender = QuestionRecommender(gemini_api_key=GEMINI_KEY)
+recommender = QuestionRecommender(api_key=GEMINI_KEY)
 
 # Functions to provide these services to your routes
 def get_question_extractor(): return extractor

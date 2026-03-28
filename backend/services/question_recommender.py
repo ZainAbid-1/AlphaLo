@@ -1,11 +1,14 @@
-from langchain.chains import RetrievalQA # pyright: ignore[reportMissingImports]
-from langchain_pinecone import PineconeVectorStore # pyright: ignore[reportMissingImports]
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI # pyright: ignore[reportMissingImports]
+from langchain_classic.chains import RetrievalQA
+from langchain_pinecone import PineconeVectorStore
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 class QuestionRecommender:
     def __init__(self, api_key: str):   
         # Setup the models
-        self.embedding_model = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        self.embedding_model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
+        )
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=api_key)
 
     def get_book_recommendations(self, exam_questions):

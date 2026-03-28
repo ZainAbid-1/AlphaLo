@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Lightbulb, Flag, Check } from 'lucide-react';
-import { topics, questions } from '../data/mockData';
+import { Topic, Question } from '../data/mockData';
+import { api } from '../../services/api';
 
 export default function MockExam() {
   const navigate = useNavigate();
   const { topicId } = useParams();
-  const topic = topics.find(t => t.id === topicId);
-
+  
+  const [displayTopic, setDisplayTopic] = useState<Topic | any>(null);
   const [keepOriginal, setKeepOriginal] = useState(true);
   const [difficulty, setDifficulty] = useState(50);
+  
   const [examStarted, setExamStarted] = useState(false);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [topicQuestions, setTopicQuestions] = useState<Question[]>([]);
+  
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -18,18 +23,47 @@ export default function MockExam() {
 
   const isFullExam = topicId === 'full-exam';
 
-  const topicQuestions = isFullExam ? [] : questions.filter(q => q.topicId === topicId);
-  const displayTopic = isFullExam 
-    ? { id: 'full-exam', topic: 'Full Exam', phase: 'Full Exam', aiPattern: '', complexity: 'medium' as const }
-    : topic;
+  useEffect(() => {
+    if (isFullExam) {
+      setDisplayTopic({ id: 'full-exam', topic: 'Full Exam', phase: 'Full Exam', aiPattern: '', complexity: 'medium' });
+    } else {
+      api.get('/student/roadmap/cs-oop-java').then(res => {
+        const foundTopic = res.data.find((t: Topic) => t.id === topicId);
+        setDisplayTopic(foundTopic || null);
+      });
+    }
+  }, [topicId, isFullExam]);
 
   if (!displayTopic) {
-    return <div>Topic not found</div>;
+    return <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] flex items-center justify-center text-white">Loading Module...</div>;
   }
 
-  const handleStartExam = () => {
-    if (topicQuestions.length > 0) {
+  const handleStartExam = async () => {
+    try {
+      setLoadingQuestions(true);
+      const res = await api.post('/student/mockexam/start');
+      // Format questions for frontend matching DB columns
+      const formattedQuestions = res.data.map((q: any) => {
+        let parsedOptions = q.options;
+        if (typeof parsedOptions === 'string') {
+          try {
+            parsedOptions = JSON.parse(parsedOptions);
+          } catch (e) {
+            parsedOptions = [];
+          }
+        }
+        return {
+          ...q,
+          type: q.question_type || 'short-answer', 
+          options: parsedOptions
+        };
+      });
+      setTopicQuestions(formattedQuestions);
       setExamStarted(true);
+    } catch (error) {
+      console.error("Failed to fetch questions:", error);
+    } finally {
+      setLoadingQuestions(false);
     }
   };
 
@@ -142,34 +176,28 @@ export default function MockExam() {
                 <div className="space-y-2 text-sm text-gray-300">
                   <div className="flex justify-between">
                     <span>Number of Questions:</span>
-                    <span className="text-white font-semibold">{topicQuestions.length}</span>
+                    <span className="text-white font-semibold">Dynamic (Up to 10)</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Estimated Time:</span>
-                    <span className="text-white font-semibold">{topicQuestions.length * 2.5} minutes</span>
+                    <span className="text-white font-semibold">~25 minutes</span>
                   </div>
                   <div className="flex justify-between">
                     <span>AI Hints Available:</span>
-                    <span className="text-[#10B981] font-semibold">{topicQuestions.length > 0 ? 'Yes' : 'No'}</span>
+                    <span className="text-[#10B981] font-semibold">Yes</span>
                   </div>
                 </div>
               </div>
 
               {/* Start Button */}
-              {topicQuestions.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  <p className="mb-2">No questions available for this topic.</p>
-                  <p className="text-sm">Please connect to backend to load questions.</p>
-                </div>
-              ) : (
-                <button
-                  onClick={handleStartExam}
-                  className="w-full py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-lg hover:shadow-[#7C3AED]/50 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group"
-                >
-                  Start Mock Exam
-                  <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                </button>
-              )}
+              <button
+                onClick={handleStartExam}
+                disabled={loadingQuestions}
+                className="w-full py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-lg hover:shadow-[#7C3AED]/50 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              >
+                {loadingQuestions ? "Generating Questions..." : "Start Mock Exam"}
+                {!loadingQuestions && <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />}
+              </button>
             </div>
           </div>
         </div>
@@ -177,9 +205,25 @@ export default function MockExam() {
     );
   }
 
+  // Fallback if no questions return from backend but exam Started
+  if (!topicQuestions || topicQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] flex flex-col items-center justify-center text-white p-8">
+        <h2 className="text-2xl font-bold mb-4">No Questions Found</h2>
+        <p className="mb-6 text-gray-300">The AI could not generate questions or the question bank is empty.</p>
+        <button
+          onClick={() => setExamStarted(false)}
+          className="px-6 py-2 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] rounded-xl font-semibold"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4">
-      <div className="max-w-7xl mx-auto h-screen flex flex-col py-4">
+      <div className="max-w-7xl mx-auto h-[95vh] flex flex-col py-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <button
@@ -204,7 +248,7 @@ export default function MockExam() {
                   Question {currentQuestion + 1}
                 </span>
                 <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm font-semibold capitalize">
-                  {currentQ.difficulty}
+                  {currentQ.difficulty || 'medium'}
                 </span>
               </div>
               <button
@@ -221,7 +265,7 @@ export default function MockExam() {
 
             <p className="text-white text-lg mb-6 leading-relaxed">{currentQ.text}</p>
 
-            {currentQ.type === 'multiple-choice' && currentQ.options && (
+            {currentQ.type === 'multiple-choice' && Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
               <div className="space-y-3">
                 {currentQ.options.map((option, index) => (
                   <button
@@ -269,7 +313,7 @@ export default function MockExam() {
               </button>
               {showHint && (
                 <div className="mt-3 p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl text-gray-300 text-sm">
-                  💡 <strong>AI Hint:</strong> Focus on the practical implications. Consider real-world scenarios rather than theoretical definitions. Think about how this concept would apply in a production system.
+                  💡 <strong>AI Hint:</strong> {currentQ.hint || "Focus on the practical implications. Consider real-world scenarios rather than theoretical definitions."}
                 </div>
               )}
             </div>
@@ -333,7 +377,14 @@ export default function MockExam() {
                 Next
                 <ChevronRight className="w-4 h-4" />
               </button>
-              <button className="w-full py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:shadow-lg hover:shadow-[#10B981]/30 text-white rounded-xl font-semibold transition-all">
+              <button 
+                onClick={() => {
+                   api.post('/student/mockexam/submit').then(() => {
+                     alert("Exam Submitted Successfully!");
+                     navigate('/dashboard');
+                   });
+                }}
+                className="w-full py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:shadow-lg hover:shadow-[#10B981]/30 text-white rounded-xl font-semibold transition-all">
                 Submit Exam
               </button>
             </div>
