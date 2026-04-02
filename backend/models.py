@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Integer, ForeignKey
 from database import Base
+from pydantic import BaseModel
 
 class Course(Base):
     __tablename__ = "courses"
@@ -41,6 +42,7 @@ class PastPaper(Base):
     __tablename__ = "past_papers"
     id = Column(Integer, primary_key=True, autoincrement=True)
     course_id = Column(String, ForeignKey("courses.id"))
+    instructor_id = Column(String, ForeignKey("instructors.id"))
     paper_title = Column(String)           # e.g., "Midterm 2024"
     raw_content = Column(String)           # Used as the "Blueprint" for AI generation
 
@@ -48,6 +50,7 @@ class Textbook(Base):
     __tablename__ = "textbooks"
     id = Column(Integer, primary_key=True, autoincrement=True)
     course_id = Column(String, ForeignKey("courses.id"))
+    instructor_id = Column(String, ForeignKey("instructors.id"))
     title = Column(String)
     file_path = Column(String) # Path to the PDF on your server
 
@@ -80,4 +83,9 @@ class Question(Base):
     difficulty = Column(String) # e.g., 'easy', 'medium', 'hard'
     options = Column(String, nullable=True) # JSON string for choices
     correct_answer = Column(String, nullable=True)
-    hint = Column(String, nullable=True)
+    hint = Column(String, nullable=True)
+
+class DisplayExamRequest(BaseModel):
+    course_id: str
+    instructor_id: str
+    generation_count: int

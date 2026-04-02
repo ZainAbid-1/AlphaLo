@@ -41,7 +41,7 @@ def add_instructor(id: str, course_id: str, name: str, title: str, avatar: str, 
 
 @router.post("/upload-textbook/{course_id}")
 # *** FIX: Inject the parser directly into the function signature ***
-async def upload_textbook(course_id: str, title: str, file: UploadFile = File(...), 
+async def upload_textbook(course_id: str, title: str, instructor_id: str, file: UploadFile = File(...), 
                           db: Session = Depends(get_db), 
                           parser: TextbookIngestor = Depends(get_textbook_parser)): # <-- MOVED DEPENDENCY HERE
 
@@ -68,7 +68,7 @@ async def upload_textbook(course_id: str, title: str, file: UploadFile = File(..
         # 4. Vectorize and upload to Pinecone
         vectors = parser.vectorization(chunks)
         
-        db.add(Textbook(course_id=course_id, title=title, file_path=temp_file_path))
+        db.add(Textbook(course_id=course_id, instructor_id=instructor_id, title=title, file_path=temp_file_path))
         db.commit()
         
         return {"status": "Textbook uploaded & vectorized!", "pages_processed": len(chunks)}
@@ -83,7 +83,7 @@ async def upload_textbook(course_id: str, title: str, file: UploadFile = File(..
 
 @router.post("/upload-past-paper/{course_id}")
 # *** FIX: Inject the extractor directly into the function signature ***
-async def upload_past_paper(course_id: str, title: str, file: UploadFile = File(...), 
+async def upload_past_paper(course_id: str, title: str, instructor_id: str, file: UploadFile = File(...), 
                             db: Session = Depends(get_db),
                             extractor=Depends(get_question_extractor)): # Use a name like 'extractor'
     if not file.filename.lower().endswith('.pdf'):
@@ -102,7 +102,7 @@ async def upload_past_paper(course_id: str, title: str, file: UploadFile = File(
         # Use the injected extractor service
         exam_text = extractor.exam_parser(temp_file_path)
         
-        db.add(PastPaper(course_id=course_id, paper_title=title, raw_content=exam_text))
+        db.add(PastPaper(course_id=course_id, instructor_id=instructor_id, paper_title=title, raw_content=exam_text))
         db.commit()
         
         return {"status": "Past Paper extracted and saved as AI Blueprint"}

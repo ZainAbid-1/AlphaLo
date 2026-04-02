@@ -51,6 +51,8 @@ export default function Wizard() {
     setSelectedInstructor(instructor);
     // In a real app we'd save this to global auth context or local storage
     localStorage.setItem('selectedInstructorName', instructor.name);
+    localStorage.setItem('selectedInstructorId', instructor.id);
+    localStorage.setItem('selectedCourseId', selectedCourse?.id || '');
     
     // Navigate to dashboard after a brief delay
     setTimeout(() => {

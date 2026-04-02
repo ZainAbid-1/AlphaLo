@@ -21,7 +21,7 @@ export const router = createBrowserRouter([
     Component: Dashboard,
   },
   {
-    path: '/mock/:topicId',
+    path: '/displayexam/:topicId',
     Component: MockExam,
   },
   {

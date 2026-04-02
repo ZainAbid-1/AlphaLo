@@ -1,8 +1,9 @@
 # backend/routes/student.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SyllabusTopic, Performance, Question, ExamPattern, University, Course, Instructor
+from models import SyllabusTopic, Performance, Question, ExamPattern, University, Course, Instructor, PastPaper, DisplayExamRequest
+from dependencies import get_exam_generator
 
 router = APIRouter()
 
@@ -43,14 +44,16 @@ def get_correlation(topic_id: str, db: Session = Depends(get_db)):
     patterns = db.query(ExamPattern).filter_by(topic_id=topic_id).all()
     return [p.__dict__ for p in patterns]
 
-@router.post("/mockexam/start")
-def start_mock_exam(db: Session = Depends(get_db)):
-    # Return questions from DB to simulate exam generation
-    questions = db.query(Question).limit(10).all()
-    return [q.__dict__ for q in questions]
-
-@router.post("/mockexam/submit")
-def submit_mock_exam(db: Session = Depends(get_db)):
-    # Placeholder for grading logic
-    return {"status": "success", "message": "Exam submitted"}
-
+@router.post("/displayexam")
+def display_exam(request: DisplayExamRequest, db: Session = Depends(get_db)):
+    past_paper = db.query(PastPaper).filter_by(course_id=request.course_id, instructor_id=request.instructor_id).first()
+    if not past_paper:
+        raise HTTPException(status_code=404, detail="Past paper not found for this course and instructor.")
+    
+    exam_generator = get_exam_generator()
+    try:
+        data = exam_generator.generate(past_paper.raw_content, request.generation_count)
+        return data
+    except Exception as e:
+        print("Failed to generate/parse JSON:", e)
+        raise HTTPException(status_code=500, detail="AI generation failed to produce valid JSON.")

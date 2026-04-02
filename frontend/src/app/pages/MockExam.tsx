@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, Sparkles, ChevronLeft, ChevronRight, Lightbulb, Flag, Check } from 'lucide-react';
+import { ArrowLeft, Sparkles, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Topic, Question } from '../data/mockData';
 import { api } from '../../services/api';
 
@@ -9,39 +9,52 @@ export default function MockExam() {
   const { topicId } = useParams();
   
   const [displayTopic, setDisplayTopic] = useState<Topic | any>(null);
-  const [keepOriginal, setKeepOriginal] = useState(true);
-  const [difficulty, setDifficulty] = useState(50);
-  
   const [examStarted, setExamStarted] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [topicQuestions, setTopicQuestions] = useState<Question[]>([]);
-  
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [showHint, setShowHint] = useState(false);
-  const [flagged, setFlagged] = useState<Set<number>>(new Set());
 
+  // We get course and instructor from localStorage
+  const courseId = localStorage.getItem('selectedCourseId') || 'cs-oop-java';
+  const instructorId = localStorage.getItem('selectedInstructorId') || 'jaudat';
   const isFullExam = topicId === 'full-exam';
 
   useEffect(() => {
     if (isFullExam) {
-      setDisplayTopic({ id: 'full-exam', topic: 'Full Exam', phase: 'Full Exam', aiPattern: '', complexity: 'medium' });
+      setDisplayTopic({ id: 'full-exam', topic: 'Full Past Paper', phase: 'Full Exam', aiPattern: '', complexity: 'medium' });
     } else {
-      api.get('/student/roadmap/cs-oop-java').then(res => {
+      api.get(`/student/roadmap/${courseId}`).then(res => {
         const foundTopic = res.data.find((t: Topic) => t.id === topicId);
         setDisplayTopic(foundTopic || null);
       });
     }
-  }, [topicId, isFullExam]);
+  }, [topicId, isFullExam, courseId]);
 
   if (!displayTopic) {
     return <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] flex items-center justify-center text-white">Loading Module...</div>;
   }
 
+  const getGenerationCount = () => {
+    const count = localStorage.getItem(`past_paper_gen_count_${courseId}`);
+    return count ? parseInt(count, 10) : 0;
+  };
+
+  const incrementGenerationCount = () => {
+    const count = getGenerationCount();
+    localStorage.setItem(`past_paper_gen_count_${courseId}`, (count + 1).toString());
+  };
+
   const handleStartExam = async () => {
     try {
       setLoadingQuestions(true);
-      const res = await api.post('/student/mockexam/start');
+      const generationCount = getGenerationCount();
+      
+      const res = await api.post('/student/displayexam', {
+        course_id: courseId,
+        instructor_id: instructorId,
+        generation_count: generationCount,
+      });
+
       // Format questions for frontend matching DB columns
       const formattedQuestions = res.data.map((q: any) => {
         let parsedOptions = q.options;
@@ -54,14 +67,19 @@ export default function MockExam() {
         }
         return {
           ...q,
-          type: q.question_type || 'short-answer', 
+          type: q.type || 'short-answer', 
           options: parsedOptions
         };
       });
       setTopicQuestions(formattedQuestions);
       setExamStarted(true);
-    } catch (error) {
+      
+      // Increment only after success
+      incrementGenerationCount();
+    } catch (error: any) {
       console.error("Failed to fetch questions:", error);
+      const serverMsg = error?.response?.data?.detail || error?.message || 'Unknown error.';
+      alert(`Failed to generate past paper.\n\nReason: ${serverMsg}`);
     } finally {
       setLoadingQuestions(false);
     }
@@ -70,30 +88,17 @@ export default function MockExam() {
   const handleNextQuestion = () => {
     if (currentQuestion < topicQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer(null);
-      setShowHint(false);
     }
   };
 
   const handlePreviousQuestion = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
-      setSelectedAnswer(null);
-      setShowHint(false);
     }
-  };
-
-  const toggleFlag = () => {
-    const newFlagged = new Set(flagged);
-    if (newFlagged.has(currentQuestion)) {
-      newFlagged.delete(currentQuestion);
-    } else {
-      newFlagged.add(currentQuestion);
-    }
-    setFlagged(newFlagged);
   };
 
   const currentQ = topicQuestions[currentQuestion];
+  const generationCount = getGenerationCount();
 
   if (!examStarted) {
     return (
@@ -107,105 +112,53 @@ export default function MockExam() {
             Back to Dashboard
           </button>
 
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl">
-                <Sparkles className="w-6 h-6 text-white" />
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl text-center flex flex-col items-center">
+            <div className="p-4 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-2xl mb-6 shadow-lg shadow-[#7C3AED]/30">
+              <FileText className="w-12 h-12 text-white" />
+            </div>
+            
+            <h1 className="text-4xl font-bold text-white mb-2">Past Paper Presenter</h1>
+            <p className="text-gray-300 text-lg mb-8 max-w-lg">
+              View the uploaded past paper formatted cleanly for your screen. Subsequent generations will intelligently invent new questions guided by the original structural blueprint.
+            </p>
+
+            <div className="bg-white/5 border border-white/20 rounded-2xl p-6 w-full max-w-md mb-8">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400">Course</span>
+                <span className="text-white font-semibold uppercase">{courseId}</span>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">AI Mock Exam Generator</h1>
-                <p className="text-gray-300">{displayTopic.topic}</p>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400">Times Generated</span>
+                <span className="text-white font-semibold">{generationCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Current Mode</span>
+                <span className={generationCount === 0 ? "text-[#3B82F6] font-semibold" : "text-[#10B981] font-semibold"}>
+                  {generationCount === 0 ? 'Original Blueprint' : 'AI Modded Challenge'}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-6 mt-8">
-              {/* Scenario Toggle */}
-              <div>
-                <label className="block text-white font-semibold mb-3">Question Scenarios</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setKeepOriginal(true)}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      keepOriginal
-                        ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-white'
-                        : 'bg-white/5 border-white/20 text-gray-400 hover:border-white/40'
-                    }`}
-                  >
-                    <div className="font-semibold mb-1">Keep Original</div>
-                    <div className="text-sm opacity-80">Use actual exam scenarios</div>
-                  </button>
-                  <button
-                    onClick={() => setKeepOriginal(false)}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      !keepOriginal
-                        ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-white'
-                        : 'bg-white/5 border-white/20 text-gray-400 hover:border-white/40'
-                    }`}
-                  >
-                    <div className="font-semibold mb-1">New AI Scenarios</div>
-                    <div className="text-sm opacity-80">Generate fresh contexts</div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Difficulty Slider */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-white font-semibold">Difficulty Level</label>
-                  <span className="text-[#7C3AED] font-semibold">
-                    {difficulty < 40 ? 'Instructor Style' : difficulty > 60 ? 'Challenging' : 'Balanced'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(Number(e.target.value))}
-                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#7C3AED] [&::-webkit-slider-thumb]:cursor-pointer"
-                />
-                <div className="flex justify-between mt-2 text-sm text-gray-400">
-                  <span>Matches instructor's style</span>
-                  <span>Extra challenging</span>
-                </div>
-              </div>
-
-              {/* Exam Info */}
-              <div className="bg-white/5 border border-white/20 rounded-xl p-5">
-                <h3 className="text-white font-semibold mb-3">Exam Details</h3>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div className="flex justify-between">
-                    <span>Number of Questions:</span>
-                    <span className="text-white font-semibold">Dynamic (Up to 10)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Estimated Time:</span>
-                    <span className="text-white font-semibold">~25 minutes</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>AI Hints Available:</span>
-                    <span className="text-[#10B981] font-semibold">Yes</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Start Button */}
-              <button
-                onClick={handleStartExam}
-                disabled={loadingQuestions}
-                className="w-full py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-lg hover:shadow-[#7C3AED]/50 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
-              >
-                {loadingQuestions ? "Generating Questions..." : "Start Mock Exam"}
-                {!loadingQuestions && <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />}
-              </button>
-            </div>
+            <button
+              onClick={handleStartExam}
+              disabled={loadingQuestions}
+              className="w-full max-w-md py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-xl hover:shadow-[#7C3AED]/50 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
+            >
+              {loadingQuestions ? (
+                "Processing past paper..." 
+              ) : (
+                <>
+                  {generationCount === 0 ? 'View Past Paper' : 'Generate Similar Paper'}
+                  <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Fallback if no questions return from backend but exam Started
   if (!topicQuestions || topicQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] flex flex-col items-center justify-center text-white p-8">
@@ -231,7 +184,7 @@ export default function MockExam() {
             className="flex items-center gap-2 text-white hover:text-[#7C3AED] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Exit Exam
+            Back to Generator
           </button>
           <div className="text-white text-sm">
             Question {currentQuestion + 1} of {topicQuestions.length}
@@ -239,153 +192,75 @@ export default function MockExam() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
           {/* Question Panel */}
-          <div className="lg:col-span-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 overflow-y-auto">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-[#7C3AED]/20 border border-[#7C3AED]/30 rounded-lg text-[#7C3AED] text-sm font-semibold">
-                  Question {currentQuestion + 1}
-                </span>
-                <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm font-semibold capitalize">
-                  {currentQ.difficulty || 'medium'}
-                </span>
-              </div>
-              <button
-                onClick={toggleFlag}
-                className={`p-2 rounded-lg transition-all ${
-                  flagged.has(currentQuestion)
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                <Flag className="w-5 h-5" />
-              </button>
+          <div className="lg:col-span-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 overflow-y-auto">
+            <div className="flex items-center gap-3 mb-8">
+              <span className="px-4 py-1.5 bg-[#7C3AED]/20 border border-[#7C3AED]/30 rounded-lg text-[#7C3AED] text-sm font-bold tracking-wide">
+                QUESTION {currentQuestion + 1}
+              </span>
+              <span className="px-4 py-1.5 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm font-bold capitalize">
+                {currentQ.difficulty || 'medium'}
+              </span>
             </div>
 
-            <p className="text-white text-lg mb-6 leading-relaxed">{currentQ.text}</p>
+            <h2 className="text-white text-2xl font-medium mb-8 leading-relaxed">
+              {currentQ.text}
+            </h2>
 
-            {currentQ.type === 'multiple-choice' && Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
-              <div className="space-y-3">
+            {currentQ.options && Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
+              <div className="space-y-4 max-w-2xl">
                 {currentQ.options.map((option, index) => (
-                  <button
+                  <div
                     key={index}
-                    onClick={() => setSelectedAnswer(index)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedAnswer === index
-                        ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-white'
-                        : 'bg-white/5 border-white/20 text-gray-300 hover:border-white/40'
-                    }`}
+                    className="w-full p-5 rounded-xl border-2 border-white/10 bg-white/5 text-gray-200 flex items-center gap-4"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          selectedAnswer === index
-                            ? 'bg-[#7C3AED] border-[#7C3AED]'
-                            : 'border-white/40'
-                        }`}
-                      >
-                        {selectedAnswer === index && <Check className="w-4 h-4 text-white" />}
-                      </div>
-                      <span className="flex-1">{option}</span>
+                    <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center font-bold text-sm shrink-0">
+                      {String.fromCharCode(65 + index)}
                     </div>
-                  </button>
+                    <span className="text-lg">{option}</span>
+                  </div>
                 ))}
               </div>
             )}
-
-            {(currentQ.type === 'short-answer' || currentQ.type === 'essay') && (
-              <textarea
-                placeholder="Type your answer here..."
-                rows={currentQ.type === 'essay' ? 10 : 5}
-                className="w-full p-4 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7C3AED] resize-none"
-              />
-            )}
-
-            {/* AI Hint */}
-            <div className="mt-6">
-              <button
-                onClick={() => setShowHint(!showHint)}
-                className="flex items-center gap-2 text-[#10B981] hover:text-[#059669] transition-colors"
-              >
-                <Lightbulb className="w-5 h-5" />
-                {showHint ? 'Hide' : 'Get'} Instructor-Style Hint
-              </button>
-              {showHint && (
-                <div className="mt-3 p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl text-gray-300 text-sm">
-                  💡 <strong>AI Hint:</strong> {currentQ.hint || "Focus on the practical implications. Consider real-world scenarios rather than theoretical definitions."}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Navigation Panel */}
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 overflow-y-auto">
-            <h3 className="text-white font-semibold mb-4">Question Navigator</h3>
-            <div className="grid grid-cols-5 gap-2 mb-6">
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 overflow-y-auto flex flex-col">
+            <h3 className="text-white font-bold text-lg mb-6">Question Navigator</h3>
+            
+            <div className="grid grid-cols-5 gap-3 mb-auto">
               {topicQuestions.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => {
-                    setCurrentQuestion(index);
-                    setSelectedAnswer(null);
-                    setShowHint(false);
-                  }}
-                  className={`aspect-square rounded-lg border-2 text-sm font-semibold transition-all relative ${
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`aspect-square rounded-xl border-2 text-sm font-bold transition-all relative flex items-center justify-center ${
                     index === currentQuestion
-                      ? 'bg-[#7C3AED] border-[#7C3AED] text-white'
-                      : 'bg-white/5 border-white/20 text-white hover:border-white/40'
+                      ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
                   }`}
                 >
                   {index + 1}
-                  {flagged.has(index) && (
-                    <Flag className="w-3 h-3 text-red-400 absolute top-0.5 right-0.5" />
-                  )}
                 </button>
               ))}
             </div>
 
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-2 text-sm text-gray-300">
-                <div className="w-4 h-4 bg-[#7C3AED] rounded"></div>
-                <span>Current</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-300">
-                <div className="w-4 h-4 bg-white/5 border-2 border-white/20 rounded"></div>
-                <span>Not Visited</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-300">
-                <Flag className="w-4 h-4 text-red-400" />
-                <span>Flagged</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-4 pt-8 mt-8 border-t border-white/10">
               <button
                 onClick={handlePreviousQuestion}
                 disabled={currentQuestion === 0}
-                className="w-full py-3 bg-white/5 border border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-white/5 border mt-auto border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2 font-semibold"
               >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
+                <ChevronLeft className="w-5 h-5" />
+                Previous Question
               </button>
               <button
                 onClick={handleNextQuestion}
                 disabled={currentQuestion === topicQuestions.length - 1}
-                className="w-full py-3 bg-white/5 border border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2 font-semibold"
               >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => {
-                   api.post('/student/mockexam/submit').then(() => {
-                     alert("Exam Submitted Successfully!");
-                     navigate('/dashboard');
-                   });
-                }}
-                className="w-full py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:shadow-lg hover:shadow-[#10B981]/30 text-white rounded-xl font-semibold transition-all">
-                Submit Exam
+                Next Question
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>

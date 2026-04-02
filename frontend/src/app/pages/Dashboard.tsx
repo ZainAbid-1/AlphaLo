@@ -11,10 +11,11 @@ export default function Dashboard() {
   
   // Get current instructor name from Wizard selection
   const currentInstructor = localStorage.getItem('selectedInstructorName') || "Your Instructor";
+  const courseId = localStorage.getItem('selectedCourseId') || 'cs-oop-java';
 
   useEffect(() => {
-    // Fetch roadmap for 'cs-oop-java' course
-    api.get('/student/roadmap/cs-oop-java')
+    // Fetch roadmap for the selected course
+    api.get(`/student/roadmap/${courseId}`)
       .then(response => {
         setTopics(response.data);
       })
@@ -101,7 +102,7 @@ export default function Dashboard() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/mock/full-exam')}
+              onClick={() => navigate('/displayexam/full-exam')}
               className="px-6 py-3 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-xl hover:shadow-[#7C3AED]/40 text-white rounded-xl font-semibold transition-all flex items-center gap-2 group whitespace-nowrap"
             >
               <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
