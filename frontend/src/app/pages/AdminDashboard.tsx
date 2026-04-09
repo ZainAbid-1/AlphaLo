@@ -1,12 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2, User } from 'lucide-react';
-import { api } from '../../services/api'; // <-- *** VERIFY THIS PATH ***
+import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2, User, LogIn, ShieldAlert } from 'lucide-react';
+import { api } from '../../services/api';
+import { supabase } from '../../services/supabaseClient';
   
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [session, setSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'curriculum' | 'uploads'>('curriculum');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/admin'
+      }
+    });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const allowedEmails = (import.meta.env.VITE_ALLOWED_ADMIN_EMAILS || '').split(',');
+  const isAuthorized = session && allowedEmails.includes(session.user.email);
 
   // --- FORM STATES ---
   const[uniData, setUniData] = useState({ id: '', name: '' });
@@ -142,9 +172,49 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-gray-400 mt-1">Manage infrastructure, courses, and AI knowledge bases.</p>
           </div>
+
+          {session && (
+            <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/10">
+              <div className="text-right">
+                <p className="text-white text-sm font-semibold">{session.user.email}</p>
+                <button onClick={handleLogout} className="text-[#F87171] text-xs hover:underline">Log Out</button>
+              </div>
+              <div className="w-10 h-10 bg-[#7C3AED] rounded-full flex items-center justify-center text-white font-bold">
+                {session.user.email?.[0].toUpperCase()}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Status Toast */}
+        {!session ? (
+          <div className="max-w-md mx-auto mt-20 text-center backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-12 shadow-2xl">
+            <ShieldAlert className="w-16 h-16 text-[#7C3AED] mx-auto mb-6" />
+            <h2 className="text-3xl font-bold text-white mb-4">Admin Access Required</h2>
+            <p className="text-gray-400 mb-8">This area is restricted to authorized administrators only. Please sign in with your Google account to proceed.</p>
+            <button 
+              onClick={handleLogin}
+              className="w-full py-4 bg-white text-gray-900 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-all shadow-lg shadow-white/10"
+            >
+              <LogIn className="w-5 h-5" />
+              Sign in with Google
+            </button>
+          </div>
+        ) : !isAuthorized ? (
+          <div className="max-w-md mx-auto mt-20 text-center backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-3xl p-12 shadow-2xl">
+            <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-6" />
+            <h2 className="text-3xl font-bold text-white mb-4">Access Denied</h2>
+            <p className="text-gray-400 mb-8">The account <strong>{session.user.email}</strong> is not authorized to access this dashboard. If you believe this is an error, please contact the system administrator.</p>
+            <button 
+              onClick={handleLogout}
+              className="w-full py-4 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-red-500/30 transition-all"
+            >
+              <LogIn className="w-5 h-5" />
+              Sign out & Try Another Account
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Status Toast */}
         {statusMessage && (
           <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 border backdrop-blur-md animate-fade-in ${
             statusMessage.type === 'success' 
@@ -402,6 +472,8 @@ export default function AdminDashboard() {
           </div>
         )}
 
+          </>
+        )}
       </div>
     </div>
   );

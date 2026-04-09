@@ -14,3 +14,7 @@ langchain-community
 langchain-pinecone
 langchain-google-genai
 pypdf
+supabase
+langchain-openai
+openai
+langchain-classic

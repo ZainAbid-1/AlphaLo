@@ -1,13 +1,17 @@
 import json
 from langchain_community.document_loaders import PyPDFLoader # pyright: ignore[reportMissingImports]
-from google import genai
+from langchain_openai import ChatOpenAI
 import logging
 
 logging.getLogger("pypdf").setLevel(logging.ERROR)
 class QuestionExctractor:
-    def __init__(self, api_key: str):
-        self.llm = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.5-flash"
+    def __init__(self, api_key: str, model_name: str):
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+            temperature=0.1
+        )
 
     def exam_parser(self, file_path):
         docs = PyPDFLoader(file_path).load()
@@ -42,11 +46,8 @@ class QuestionExctractor:
 
         """
 
-        response = self.llm.models.generate_content(
-            model=self.model_name,
-            contents=prompt
-        )
+        response = self.llm.invoke(prompt)
 
         # AI often wraps JSON in ```json blocks, strip those blocks
-        clean_json = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_json)
+        clean_json = response.content.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean_json)

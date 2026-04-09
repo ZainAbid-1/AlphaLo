@@ -1,15 +1,19 @@
 from langchain_classic.chains import RetrievalQA
 from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 class QuestionRecommender:
-    def __init__(self, api_key: str):   
+    def __init__(self, api_key: str, model_name: str):   
         # Setup the models
         self.embedding_model = HuggingFaceEmbeddings(
             model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
         )
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=api_key)
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1"
+        )
 
     def get_book_recommendations(self, exam_questions):
         

@@ -1,10 +1,14 @@
 import json
-from google import genai
+from langchain_openai import ChatOpenAI
 
 class ExamGeneratorService:
-    def __init__(self, api_key: str):
-        self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-robotics-er-1.5-preview"
+    def __init__(self, api_key: str, model_name: str):
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+            temperature=0.7
+        )
 
     def generate(self, raw_content: str, generation_count: int):
         if generation_count == 0:
@@ -48,18 +52,15 @@ class ExamGeneratorService:
             """
             
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            response = self.llm.invoke(prompt)
+            clean_json = response.content.replace("```json", "").replace("```", "").strip()
         except Exception as api_err:
-            raise RuntimeError(f"Gemini API error: {api_err}")
+            raise RuntimeError(f"OpenRouter API error: {api_err}")
         
-        clean_json = response.text.replace("```json", "").replace("```", "").strip()
         try:
             data = json.loads(clean_json)
         except json.JSONDecodeError as parse_err:
-            raise RuntimeError(f"Failed to parse Gemini JSON output: {parse_err}\n\nRaw output:\n{clean_json[:500]}")
+            raise RuntimeError(f"Failed to parse OpenRouter JSON output: {parse_err}\n\nRaw output:\n{clean_json[:500]}")
         
         # Ensure we return a default 'type' or uniform format
         for q in data:
