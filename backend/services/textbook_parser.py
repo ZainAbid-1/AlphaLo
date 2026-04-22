@@ -1,6 +1,6 @@
 # from langchain_google_genai import GoogleGenerativeAIEmbeddings # pyright: ignore[reportMissingImports]
 from langchain_pinecone import PineconeVectorStore # pyright: ignore[reportMissingImports]
-from langchain_community.document_loaders import PyPDFLoader # pyright: ignore[reportMissingImports]
+from langchain_community.document_loaders import PyMuPDFLoader # pyright: ignore[reportMissingImports]
 from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
 from langchain_huggingface import HuggingFaceEmbeddings
 import logging
@@ -16,7 +16,7 @@ class TextbookIngestor:
 
     def pdf_parser(self, file_path):
         print(f"📄 Loading PDF... (This may take a minute for large files)")
-        data = PyPDFLoader(file_path).load()
+        data = PyMuPDFLoader(file_path).load()
         print(f"✅ Loaded {len(data)} pages from PDF.")
         return data
 

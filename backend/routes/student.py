@@ -10,6 +10,7 @@ class DisplayExamRequest(BaseModel):
     course_id: str
     instructor_id: str
     generation_count: int
+    paper_type: str
 
 @router.get("/universities")
 def get_universities():
@@ -57,10 +58,11 @@ def get_correlation(topic_id: str):
     return res.data
 
 @router.post("/displayexam")
-def display_exam(request: DisplayExamRequest):
+async def display_exam(request: DisplayExamRequest):
     res = supabase.table("past_papers").select("*") \
         .eq("course_id", request.course_id) \
-        .eq("instructor_id", request.instructor_id).execute()
+        .eq("instructor_id", request.instructor_id) \
+        .eq("paper_type", request.paper_type).execute()
         
     if not res.data:
         raise HTTPException(status_code=404, detail="Past paper not found for this course and instructor.")
@@ -68,9 +70,12 @@ def display_exam(request: DisplayExamRequest):
     past_paper = res.data[0] 
     exam_generator = get_exam_generator()
     
+    # Build a unique cache key so the blueprint is reused across generations
+    cache_key = f"{request.course_id}:{request.instructor_id}:{request.paper_type}"
+    
     try:
         # Generates AI JSON based on the raw content
-        data = exam_generator.generate(past_paper["raw_content"], request.generation_count)
+        data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
         return data
     except Exception as e:
         print("Failed to generate/parse JSON:", e)

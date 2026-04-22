@@ -1,5 +1,5 @@
 # backend/routes/admin.py
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 import os
 
 from dependencies import get_textbook_parser, get_question_extractor, get_admin_user
@@ -40,8 +40,53 @@ def add_instructor(id: str, course_id: str, name: str, title: str, avatar: str):
     }).execute()
     return {"status": "Instructor added"}
 
+# --- BACKGROUND TASK FUNCTIONS ---
+
+def process_textbook_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, parser: TextbookIngestor):
+    """Heavy AI lifting: Parses, chunks, and vectorizes textbook in background."""
+    try:
+        data = parser.pdf_parser(temp_file_path)
+        chunks = parser.data_chunking(data)
+        parser.vectorization(chunks) # Pushes to Pinecone
+        
+        # Save reference to Supabase 'textbooks'
+        supabase.table("textbooks").insert({
+            "course_id": course_id, 
+            "instructor_id": instructor_id, 
+            "title": title, 
+            "file_path": temp_file_path # You might want to upload to S3/Supabase Storage later
+        }).execute()
+        print(f"✅ BACKGROUND SUCCESS: Textbook '{title}' processed and saved.")
+    except Exception as e:
+        print(f"❌ BACKGROUND ERROR: Failed to process textbook '{title}': {str(e)}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, extractor, paper_type: str):
+    """Heavy AI lifting: Parses past paper in background."""
+    try:
+        exam_text = extractor.exam_parser(temp_file_path)
+        
+        # Save raw paper to Supabase 'past_papers'
+        supabase.table("past_papers").insert({
+            "course_id": course_id, 
+            "instructor_id": instructor_id, 
+            "paper_title": title, 
+            "raw_content": exam_text,
+            "paper_type": paper_type
+        }).execute()
+        print(f"✅ BACKGROUND SUCCESS: Past Paper '{title}' ({paper_type}) processed and saved.")
+    except Exception as e:
+        print(f"❌ BACKGROUND ERROR: Failed to process past paper '{title}': {str(e)}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
 @router.post("/upload-textbook/{course_id}")
-async def upload_textbook(course_id: str, title: str, instructor_id: str, file: UploadFile = File(...), 
+async def upload_textbook(course_id: str, title: str, instructor_id: str, 
+                          background_tasks: BackgroundTasks,
+                          file: UploadFile = File(...), 
                           parser: TextbookIngestor = Depends(get_textbook_parser)):
 
     if not file.filename.lower().endswith('.pdf'):
@@ -54,28 +99,19 @@ async def upload_textbook(course_id: str, title: str, instructor_id: str, file: 
     with open(temp_file_path, "wb") as buffer: 
         buffer.write(file_bytes)
 
-    try:
-        data = parser.pdf_parser(temp_file_path)
-        chunks = parser.data_chunking(data)
-        vectors = parser.vectorization(chunks) # Pushes to Pinecone
-        
-        # Save reference to Supabase 'textbooks'
-        supabase.table("textbooks").insert({
-            "course_id": course_id, 
-            "instructor_id": instructor_id, 
-            "title": title, 
-            "file_path": temp_file_path
-        }).execute()
-        
-        return {"status": "Textbook uploaded & vectorized!", "pages_processed": len(chunks)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI Vectorization failed: {str(e)}")
-    finally:
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+    # Offload processing to background
+    background_tasks.add_task(process_textbook_task, temp_file_path, course_id, title, instructor_id, parser)
+    
+    return {
+        "status": "Accepted", 
+        "message": f"Textbook '{title}' upload received. Processing in the background. Check logs for completion."
+    }
 
 @router.post("/upload-past-paper/{course_id}")
-async def upload_past_paper(course_id: str, title: str, instructor_id: str, file: UploadFile = File(...), 
+async def upload_past_paper(course_id: str, title: str, instructor_id: str, 
+                            paper_type: str,
+                            background_tasks: BackgroundTasks,
+                            file: UploadFile = File(...), 
                             extractor=Depends(get_question_extractor)):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
@@ -87,18 +123,10 @@ async def upload_past_paper(course_id: str, title: str, instructor_id: str, file
     with open(temp_file_path, "wb") as buffer: 
         buffer.write(file_bytes)
         
-    try:
-        exam_text = extractor.exam_parser(temp_file_path)
-        
-        # Save raw paper to Supabase 'past_papers'
-        supabase.table("past_papers").insert({
-            "course_id": course_id, 
-            "instructor_id": instructor_id, 
-            "paper_title": title, 
-            "raw_content": exam_text
-        }).execute()
-        
-        return {"status": "Past Paper extracted and saved as AI Blueprint"}
-    finally:
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+    # Offload processing to background
+    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, extractor, paper_type)
+
+    return {
+        "status": "Accepted", 
+        "message": f"Past paper '{title}' ({paper_type}) upload received. Extracting blueprint in the background."
+    }

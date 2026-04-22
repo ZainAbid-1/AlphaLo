@@ -45,8 +45,13 @@ export default function AdminDashboard() {
   const [topicData, setTopicData] = useState({ course_id: '', id: '', week: '', topic: '' }); 
   const [instructorData, setInstructorData] = useState({ id: '', course_id: '', name: '', title: '', avatar: '' });
   
-  // *** FIX 1: Changed courseId to course_id (snake_case) ***
-  const [uploadData, setUploadData] = useState({ course_id: '', instructor_id: '', title: '', type: 'textbook' }); 
+  const [uploadData, setUploadData] = useState({ 
+    course_id: '', 
+    instructor_id: '', 
+    title: '', 
+    type: 'textbook',
+    paper_type: 'midterm' 
+  }); 
   const[selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -135,16 +140,23 @@ export default function AdminDashboard() {
     
     const endpoint = type === 'textbook' 
       ? `/admin/upload-textbook/${courseId}?title=${title}&instructor_id=${instructorId}`
-      : `/admin/upload-past-paper/${courseId}?title=${title}&instructor_id=${instructorId}`;
+      : `/admin/upload-past-paper/${courseId}?title=${title}&instructor_id=${instructorId}&paper_type=${uploadData.paper_type}`;
     
     try {
         setIsUploading(true);
         const response = await api.post(endpoint, formData); 
         console.log('API Response:', response.data);
-        
-        showStatus('success', `${response.data.status || 'File Processed'} - ${type === 'textbook' ? `Pages Indexed: ${response.data.pages_processed}` : ''}`);
+        const isAccepted = response.data.status === 'Accepted';
+        const msg = response.data.message || (isAccepted ? 'Processing in background...' : 'File processed successfully!');
+        showStatus('success', msg);
         setSelectedFile(null);
-        setUploadData({ course_id: '', instructor_id: '', title: '', type: 'textbook' }); // *** FIX APPLIED: Resetting course_id ***
+        setUploadData({ 
+          course_id: '', 
+          instructor_id: '', 
+          title: '', 
+          type: 'textbook',
+          paper_type: 'midterm'
+        }); 
     } catch (error: any) {
         showStatus('error', `File upload failed. Server Message: ${error.response?.data?.detail || 'Unknown Error'}`);
         console.error(error);
@@ -423,6 +435,19 @@ export default function AdminDashboard() {
                     className="w-full mt-2 px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#10B981]" 
                   />
                 </div>
+                {uploadData.type === 'past_paper' && (
+                <div className="col-span-2">
+                  <label className="text-sm text-white font-medium">Paper Category</label>
+                  <select 
+                    value={uploadData.paper_type} 
+                    onChange={e => setUploadData({...uploadData, paper_type: e.target.value})}
+                    className="w-full mt-2 px-4 py-3 bg-[#1A2B48] border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#10B981]"
+                  >
+                    <option value="midterm">Mid-term Paper</option>
+                    <option value="final">Final-term Paper</option>
+                  </select>
+                </div>
+              )}
               </div>
 
               <div>

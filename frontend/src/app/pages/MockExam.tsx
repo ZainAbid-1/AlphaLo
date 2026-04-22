@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Sparkles, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Topic, Question } from '../data/mockData';
 import { api } from '../../services/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function MockExam() {
   const navigate = useNavigate();
@@ -12,7 +14,7 @@ export default function MockExam() {
   const [examStarted, setExamStarted] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [topicQuestions, setTopicQuestions] = useState<Question[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedPaperType, setSelectedPaperType] = useState<'midterm' | 'final'>('midterm');
 
   // We get course and instructor from localStorage
   const courseId = localStorage.getItem('selectedCourseId') || 'cs-oop-java';
@@ -53,6 +55,7 @@ export default function MockExam() {
         course_id: courseId,
         instructor_id: instructorId,
         generation_count: generationCount,
+        paper_type: selectedPaperType,
       });
 
       // Format questions for frontend matching DB columns
@@ -78,26 +81,18 @@ export default function MockExam() {
       incrementGenerationCount();
     } catch (error: any) {
       console.error("Failed to fetch questions:", error);
-      const serverMsg = error?.response?.data?.detail || error?.message || 'Unknown error.';
+      const rawDetail = error?.response?.data?.detail;
+      const serverMsg = typeof rawDetail === 'string' 
+        ? rawDetail 
+        : rawDetail 
+          ? JSON.stringify(rawDetail, null, 2) 
+          : error?.message || 'Unknown error.';
       alert(`Failed to generate past paper.\n\nReason: ${serverMsg}`);
     } finally {
       setLoadingQuestions(false);
     }
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < topicQuestions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
-  const currentQ = topicQuestions[currentQuestion];
   const generationCount = getGenerationCount();
 
   if (!examStarted) {
@@ -139,13 +134,35 @@ export default function MockExam() {
               </div>
             </div>
 
+            <div className="flex bg-white/5 border border-white/20 rounded-xl p-1 mb-8 w-full max-w-[240px] mx-auto">
+              <button
+                onClick={() => setSelectedPaperType('midterm')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                  selectedPaperType === 'midterm' ? 'bg-[#7C3AED] text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                MID-TERM
+              </button>
+              <button
+                onClick={() => setSelectedPaperType('final')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                  selectedPaperType === 'final' ? 'bg-[#7C3AED] text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                FINAL-TERM
+              </button>
+            </div>
+
             <button
               onClick={handleStartExam}
               disabled={loadingQuestions}
-              className="w-full max-w-md py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-xl hover:shadow-[#7C3AED]/50 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
+              className="w-full max-w-md py-4 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-xl hover:shadow-[#7C3AED]/50 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 group disabled:opacity-50 relative overflow-hidden"
             >
               {loadingQuestions ? (
-                "Processing past paper..." 
+                <div className="flex flex-col items-center">
+                  <span className="animate-pulse">Optimizing AI generation...</span>
+                  <span className="text-[10px] font-normal opacity-70 tracking-tight mt-1">Parallelizing batches for faster delivery</span>
+                </div>
               ) : (
                 <>
                   {generationCount === 0 ? 'View Past Paper' : 'Generate Similar Paper'}
@@ -186,83 +203,132 @@ export default function MockExam() {
             <ArrowLeft className="w-5 h-5" />
             Back to Generator
           </button>
-          <div className="text-white text-sm">
-            Question {currentQuestion + 1} of {topicQuestions.length}
+          <div className="text-white text-sm font-medium opacity-80">
+            {topicQuestions.length} Questions Blueprint
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-          {/* Question Panel */}
-          <div className="lg:col-span-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 overflow-y-auto">
-            <div className="flex items-center gap-3 mb-8">
-              <span className="px-4 py-1.5 bg-[#7C3AED]/20 border border-[#7C3AED]/30 rounded-lg text-[#7C3AED] text-sm font-bold tracking-wide">
-                QUESTION {currentQuestion + 1}
-              </span>
-              <span className="px-4 py-1.5 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm font-bold capitalize">
-                {currentQ.difficulty || 'medium'}
-              </span>
-            </div>
-
-            <h2 className="text-white text-2xl font-medium mb-8 leading-relaxed">
-              {currentQ.text}
-            </h2>
-
-            {currentQ.options && Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
-              <div className="space-y-4 max-w-2xl">
-                {currentQ.options.map((option, index) => (
-                  <div
-                    key={index}
-                    className="w-full p-5 rounded-xl border-2 border-white/10 bg-white/5 text-gray-200 flex items-center gap-4"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center font-bold text-sm shrink-0">
-                      {String.fromCharCode(65 + index)}
-                    </div>
-                    <span className="text-lg">{option}</span>
+        {/* Main Content: Focused Document View */}
+        <div className="flex-1 flex flex-col items-center overflow-y-auto custom-scrollbar pb-12">
+          <div className="w-full max-w-4xl flex flex-col gap-8 px-4">
+            {topicQuestions.map((q, index) => (
+              <div 
+                key={index}
+                className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl transition-all hover:border-white/30"
+              >
+                {/* Header Badge */}
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <span className="px-5 py-2 bg-[#7C3AED] text-white text-xs font-black tracking-widest rounded-full shadow-lg shadow-[#7C3AED]/20 uppercase">
+                      Question {index + 1}
+                    </span>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${
+                      q.difficulty === 'hard' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                      q.difficulty === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
+                      'bg-green-500/10 border-green-500/30 text-green-400'
+                    }`}>
+                      {q.difficulty || 'medium'}
+                    </span>
                   </div>
-                ))}
+                </div>
+
+                {/* Question Text with Markdown Rendering (Tables, Code, etc.) */}
+                <div className="text-white text-xl font-medium mb-8 leading-relaxed font-sans">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+                      table: ({ node, ...props }) => (
+                        <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-inner">
+                          <table className="w-full text-base text-left border-collapse" {...props} />
+                        </div>
+                      ),
+                      thead: ({ node, ...props }) => <thead className="bg-white/10 text-sm uppercase font-bold text-gray-300" {...props} />,
+                      th: ({ node, ...props }) => <th className="px-6 py-4 border-b border-white/20" {...props} />,
+                      td: ({ node, ...props }) => <td className="px-6 py-4 border-b border-white/10 text-gray-200" {...props} />,
+                      code: ({ node, inline, ...props }: any) => 
+                        inline ? (
+                          <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sm" {...props} />
+                        ) : (
+                          <div className="my-6 p-6 bg-black/40 rounded-2xl border border-white/10 font-mono text-sm overflow-x-auto text-blue-100 shadow-inner">
+                            <pre className="m-0"><code {...props} /></pre>
+                          </div>
+                        ),
+                    }}
+                  >
+                    {q.text}
+                  </ReactMarkdown>
+                </div>
+
+                {/* Sub-questions Rendering */}
+                {q.sub_questions && q.sub_questions.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-10">
+                    {q.sub_questions.map((sq: any, sqIndex: number) => (
+                      <div key={sqIndex} className="pl-4 border-l-2 border-white/10 space-y-4">
+                        <div className="text-gray-200 text-lg font-medium">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                              table: ({ node, ...props }) => (
+                                <div className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-white/5 shadow-inner">
+                                  <table className="w-full text-sm text-left border-collapse" {...props} />
+                                </div>
+                              ),
+                              thead: ({ node, ...props }) => <thead className="bg-white/10 text-xs uppercase font-bold text-gray-400" {...props} />,
+                              th: ({ node, ...props }) => <th className="px-4 py-3 border-b border-white/10" {...props} />,
+                              td: ({ node, ...props }) => <td className="px-4 py-3 border-b border-white/5 text-gray-300" {...props} />,
+                              code: ({ node, inline, ...props }: any) => 
+                                inline ? (
+                                  <code className="px-1 py-0.5 rounded bg-white/10 font-mono text-xs" {...props} />
+                                ) : (
+                                  <div className="my-4 p-4 bg-black/40 rounded-xl border border-white/10 font-mono text-xs overflow-x-auto text-blue-100 shadow-inner">
+                                    <pre className="m-0"><code {...props} /></pre>
+                                  </div>
+                                ),
+                            }}
+                          >
+                            {sq.text}
+                          </ReactMarkdown>
+                        </div>
+                        {sq.options && sq.options.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl">
+                            {sq.options.map((option: string, optIndex: number) => (
+                              <div
+                                key={optIndex}
+                                className="p-4 rounded-xl border border-white/5 bg-white/5 text-gray-300 flex items-center gap-3 transition-colors hover:bg-white/10"
+                              >
+                                <div className="w-6 h-6 rounded-md bg-white/10 text-white/50 flex items-center justify-center font-bold text-[10px] shrink-0 uppercase">
+                                  {String.fromCharCode(97 + optIndex)}
+                                </div>
+                                <span className="text-sm">{option}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Standard Options (if no sub-questions) */}
+                {(!q.sub_questions || q.sub_questions.length === 0) && q.options && q.options.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+                    {q.options.map((option: string, optIndex: number) => (
+                      <div
+                        key={optIndex}
+                        className="p-5 rounded-2xl border border-white/10 bg-white/5 text-gray-300 flex items-center gap-4 transition-all hover:bg-white/10 hover:translate-x-1"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-[#7C3AED]/20 text-[#7C3AED] flex items-center justify-center font-black text-xs shrink-0">
+                          {String.fromCharCode(65 + optIndex)}
+                        </div>
+                        <span className="text-base">{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Navigation Panel */}
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 overflow-y-auto flex flex-col">
-            <h3 className="text-white font-bold text-lg mb-6">Question Navigator</h3>
-            
-            <div className="grid grid-cols-5 gap-3 mb-auto">
-              {topicQuestions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`aspect-square rounded-xl border-2 text-sm font-bold transition-all relative flex items-center justify-center ${
-                    index === currentQuestion
-                      ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-lg shadow-[#7C3AED]/30'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30 hover:text-white'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4 pt-8 mt-8 border-t border-white/10">
-              <button
-                onClick={handlePreviousQuestion}
-                disabled={currentQuestion === 0}
-                className="w-full py-4 bg-white/5 border mt-auto border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2 font-semibold"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                Previous Question
-              </button>
-              <button
-                onClick={handleNextQuestion}
-                disabled={currentQuestion === topicQuestions.length - 1}
-                className="w-full py-4 bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all flex items-center justify-center gap-2 font-semibold"
-              >
-                Next Question
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </div>

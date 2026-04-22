@@ -3,4 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: window.sessionStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    // @ts-ignore: broadcast exists at runtime but may be missing from your library's types
+    broadcast: false, // Prevents session syncing between tabs
+  },
+});

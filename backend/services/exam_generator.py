@@ -1,69 +1,152 @@
 import json
+import re
+import asyncio
 from langchain_openai import ChatOpenAI
 
 class ExamGeneratorService:
     def __init__(self, api_key: str, model_name: str):
+        # We use a lower temperature for structural extraction to be more precise
         self.llm = ChatOpenAI(
             model=model_name,
             openai_api_key=api_key,
-            openai_api_base="https://openrouter.ai/api/v1",
-            temperature=0.7
+            temperature=0.3,
+            timeout=120,
+            max_tokens=16384
         )
+        # In-memory cache: stores parsed blueprint per (course, instructor, paper_type)
+        self._blueprint_cache: dict[str, list] = {}
 
-    def generate(self, raw_content: str, generation_count: int):
+    def _clean_json(self, raw_output):
+        """Robustly extract a JSON array from LLM output using bracket matching."""
+        # Find the first '[' and the last ']' to extract the JSON array
+        start = raw_output.find('[')
+        end = raw_output.rfind(']')
+        if start != -1 and end != -1 and end > start:
+            return raw_output[start:end + 1]
+        # Fallback: try stripping markdown fences
+        if "```json" in raw_output:
+            raw_output = raw_output.split("```json", 1)[1]
+        if "```" in raw_output:
+            raw_output = raw_output.split("```", 1)[0]
+        return raw_output.strip()
+
+    async def _harden_all_questions(self, blueprint: list):
+        """Generate 'slightly harder' versions for ALL questions in a SINGLE call."""
+        blueprint_text = json.dumps(blueprint, indent=1)
+        prompt = f"""You are a university exam paper generator. Create SLIGHTLY HARDER variants.
+
+STRUCTURE RULES (MOST IMPORTANT):
+- You will receive a JSON list of N question objects. Return EXACTLY N objects.
+- Each object has a "text" (the parent instruction), optionally "options", and optionally "sub_questions".
+- DO NOT change the parent "text" field — keep it IDENTICAL.
+- DO NOT add or remove sub_questions. Keep the EXACT same count.
+- If a question or sub-question has "options", keep the SAME NUMBER of options but modify them to match the new harder code/problem.
+- Only modify the CODE or problem details inside each sub_question's "text".
+
+CODE RULES:
+- If a sub_question contains code, generate NEW MODIFIED code (change variable names, values, add edge cases).
+- The new code MUST be complete, compilable, and realistic.
+- NEVER replace code with summaries like "Analyze the logic" or "Snippet 1".
+
+TABLE RULES:
+- If a question contains a table, keep the structure but modify the numerical values or categories to make the problem harder.
+- Always use standard Markdown table format (e.g., | Header 1 | Header 2 |).
+
+JSON FORMATTING:
+- Return ONLY a valid JSON list. No markdown fences, no extra text.
+- All newlines inside strings MUST be \\n
+- All quotes inside strings MUST be \\"
+
+INPUT ({len(blueprint)} questions):
+{blueprint_text}"""
+        
+        print(f"DEBUG: Hardening {len(blueprint)} questions in a single LLM call...")
+        response = await self.llm.ainvoke(prompt)
+        print("DEBUG: Hardening complete.")
+        return json.loads(self._clean_json(response.content))
+
+    def _get_extraction_prompt(self, raw_content: str) -> str:
+        return f"""Parse this university past paper into a structured JSON list.
+
+STRUCTURE RULES (MOST IMPORTANT):
+- The paper has MAIN QUESTIONS (e.g., Question 1, Question 2, Question 3, etc.).
+- Each main question has a PARENT INSTRUCTION (e.g., "Predict the output of the following code snippets, in case of error explain the reason.").
+- Under each main question there are SUB-PARTS (e.g., 2.1, 2.2, 2.3, 3.1, 3.2, etc.).
+- The parent instruction goes in the top-level "text" field.
+- Each sub-part goes as a separate object inside "sub_questions".
+- DO NOT flatten sub-parts into top-level questions. A paper with 5 main questions should produce EXACTLY 5 objects.
+
+CODE RULES:
+- If a sub-part contains a code snippet, include the COMPLETE EXACT code VERBATIM in that sub_question's "text".
+- NEVER summarize code. NEVER write "Snippet 1 - Analyze the logic". Include the ACTUAL code.
+
+TABLE RULES:
+- If the raw text contains data that looks like a table (e.g., rows/columns of numbers, frequency distributions), reconstruct it into a standard Markdown table in the "text" field.
+- If headers are missing, infer logical headers (e.g., "Class Interval", "Frequency").
+
+JSON FORMATTING:
+- Return ONLY a valid JSON list. No markdown fences, no extra text.
+- All newlines inside strings MUST be \\n
+- All quotes inside strings MUST be \\"
+
+EXAMPLE: If the paper says:
+  "Question 2: Predict the output of the following code snippets...\\n 2.1 [code1] \\n 2.2 [code2]"
+The output MUST be:
+[{{
+  "text": "Predict the output of the following code snippets, in case of error explain the reason.",
+  "options": [],
+  "sub_questions": [
+    {{"text": "public class Main {{\\n    int x = 10;\\n}}", "options": []}},
+    {{"text": "class Parent {{\\n    int num;\\n}}", "options": []}}
+  ]
+}}]
+
+Omit administrative text (marks, CLO numbers, page numbers).
+
+Past Paper Text:
+{raw_content[:12000]}"""
+
+    async def generate(self, raw_content: str, generation_count: int, cache_key: str = ""):
         if generation_count == 0:
-            prompt = f"""
-            I am providing the raw text extracted from a university past paper:
-            ---
-            {raw_content}
-            ---
-
-            TASK:
-            1. Parse the text and identify every individual question or sub-question.
-            2. DO NOT change the core meaning or the scenario of the questions. Simply format them beautifully.
-            3. Remove "Administrative Noise" (Total Marks, Question 1, Time: 3 Hours, page numbers, etc).
-            4. Formatting: Return the results ONLY as a valid JSON list of objects.
+            print("DEBUG: Generating Original Blueprint (Count 0)...")
+            # For the first view, use a single optimized call for speed
+            prompt = self._get_extraction_prompt(raw_content)
+            response = await self.llm.ainvoke(prompt)
+            print("DEBUG: Original Blueprint generation complete.")
+            data = json.loads(self._clean_json(response.content))
             
-            Each object should have:
-            - "text": "The question text"
-            - "options": ["Option A", "Option B"] (Only if it provides multiple options, otherwise leave empty list [])
-            - "difficulty": "medium" (Estimate it)
-            
-            Return ONLY valid JSON.
-            """
+            # Cache the parsed blueprint for future "harder" generations
+            if cache_key:
+                self._blueprint_cache[cache_key] = data
+                print(f"DEBUG: Cached blueprint under key '{cache_key}' ({len(data)} questions)")
         else:
-            prompt = f"""
-            I am providing the raw text extracted from a university past paper:
-            ---
-            {raw_content}
-            ---
+            print(f"DEBUG: Generating Modded Challenge (Count {generation_count})...")
+            
+            # OPTIMIZATION: Use cached blueprint if available (skips the slow extraction step)
+            if cache_key and cache_key in self._blueprint_cache:
+                blueprint = self._blueprint_cache[cache_key]
+                print(f"DEBUG: Using CACHED blueprint ({len(blueprint)} questions) — skipped extraction!")
+            else:
+                # Fallback: extract blueprint from raw content (first time without cache)
+                print(f"DEBUG: No cached blueprint, extracting from {len(raw_content)} chars...")
+                extract_prompt = self._get_extraction_prompt(raw_content)
+                response = await self.llm.ainvoke(extract_prompt)
+                blueprint = json.loads(self._clean_json(response.content))
+                
+                # Cache it for next time
+                if cache_key:
+                    self._blueprint_cache[cache_key] = blueprint
+                    print(f"DEBUG: Cached blueprint under key '{cache_key}' ({len(blueprint)} questions)")
+            
+            # OPTIMIZATION: Single LLM call for ALL questions (avoids free-tier rate limits)
+            data = await self._harden_all_questions(blueprint)
 
-            TASK:
-            1. This is a reference past paper. Your task is to generate ENTIRELY NEW questions of the same or slightly higher difficulty.
-            2. Use the past paper as a stylistic and topical blueprint, but invent new scenarios and code examples.
-            3. Formatting: Return the results ONLY as a valid JSON list of objects.
-            
-            Each object should have:
-            - "text": "The newly generated question text"
-            - "options": ["Option A", "Option B"] (Optional, provide if generating a multiple choice question)
-            - "difficulty": "hard" (Estimate it)
-            
-            Return ONLY valid JSON with no markdown block wrappers.
-            """
-            
-        try:
-            response = self.llm.invoke(prompt)
-            clean_json = response.content.replace("```json", "").replace("```", "").strip()
-        except Exception as api_err:
-            raise RuntimeError(f"OpenRouter API error: {api_err}")
-        
-        try:
-            data = json.loads(clean_json)
-        except json.JSONDecodeError as parse_err:
-            raise RuntimeError(f"Failed to parse OpenRouter JSON output: {parse_err}\n\nRaw output:\n{clean_json[:500]}")
-        
-        # Ensure we return a default 'type' or uniform format
+        # Post-processing
         for q in data:
-            q['type'] = 'multiple-choice' if len(q.get('options', [])) > 0 else 'short-answer'
-            
+            q['type'] = 'multiple-choice' if (q.get('options') and len(q['options']) > 0) or q.get('sub_questions') else 'short-answer'
+            if 'options' not in q: q['options'] = []
+            if 'sub_questions' in q:
+                for sq in q['sub_questions']:
+                    if 'options' not in sq: sq['options'] = []
+                    
         return data

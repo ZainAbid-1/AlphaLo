@@ -12,7 +12,6 @@ class QuestionRecommender:
         self.llm = ChatOpenAI(
             model=model_name,
             openai_api_key=api_key,
-            openai_api_base="https://openrouter.ai/api/v1"
         )
 
     def get_book_recommendations(self, exam_questions):

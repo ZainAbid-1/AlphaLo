@@ -10,8 +10,8 @@ from jwt import PyJWKClient  # Added for ES256 support
 from fastapi import Depends, HTTPException, Security
 
 load_dotenv()
-OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL_NAME = os.getenv("OPENROUTER_MODEL_NAME")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://tngqrxlglenllgufrzuc.supabase.co")
 
 # JWKS Client for fetching Supabase public keys (required for ES256)
@@ -59,10 +59,10 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
 # Initialize the new services once
-extractor = QuestionExctractor(api_key=OPENROUTER_KEY, model_name=MODEL_NAME)
+extractor = QuestionExctractor(api_key=OPENAI_KEY, model_name=MODEL_NAME)
 parser = TextbookIngestor() 
-recommender = QuestionRecommender(api_key=OPENROUTER_KEY, model_name=MODEL_NAME)
-exam_generator = ExamGeneratorService(api_key=OPENROUTER_KEY, model_name=MODEL_NAME)
+recommender = QuestionRecommender(api_key=OPENAI_KEY, model_name=MODEL_NAME)
+exam_generator = ExamGeneratorService(api_key=OPENAI_KEY, model_name=MODEL_NAME)
 
 # Functions to provide these services to your routes
 def get_question_extractor(): return extractor
