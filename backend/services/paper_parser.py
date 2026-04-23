@@ -49,4 +49,4 @@ class QuestionExctractor:
 
         # AI often wraps JSON in ```json blocks, strip those blocks
         clean_json = response.content.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_json)
+        return json.loads(clean_json)

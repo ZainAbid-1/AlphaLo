@@ -27,6 +27,24 @@ export default function Dashboard() {
       });
   }, []);
 
+  // --- ADD THIS HANDLER ---
+  const handleBookPatterns = async (topicName: string) => {
+    try {
+      // 1. Call the AI route we created in the backend
+      const response = await api.get(`/student/book-patterns/${topicName}`);
+      
+      // 2. Navigate to the correlation page and pass the AI data
+// This matches your existing route '/correlation/:topicId'
+      navigate(`/correlation/ai-result`, { 
+        state: { recommendations: response.data, topic: topicName } 
+      });
+    } catch (error) {
+      console.error("AI Search failed:", error);
+      alert("AI Search failed. Check if the backend is running and textbook is indexed.");
+    }
+  };
+  // ----------------------
+  
   // Helper function to handle complexity colors (Added default for null)
   const getComplexityColor = (complexity: string | null) => {
     switch (complexity) {
@@ -167,7 +185,7 @@ export default function Dashboard() {
                       </td>
                       <td className="p-4">
                         <button
-                          onClick={() => navigate(`/correlation/${topic.id}`)}
+                          onClick={() => handleBookPatterns(topic.topic)}
                           className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2"
                         >
                           <BookOpen className="w-4 h-4" />

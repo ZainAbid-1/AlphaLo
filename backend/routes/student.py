@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from dependencies import get_exam_generator
 from services.supabase_client import supabase  # <-- Supabase client
+from dependencies import get_question_recommender
 
 router = APIRouter()
 
@@ -80,3 +81,18 @@ async def display_exam(request: DisplayExamRequest):
     except Exception as e:
         print("Failed to generate/parse JSON:", e)
         raise HTTPException(status_code=500, detail="AI generation failed to produce valid JSON.")
+    
+@router.get("/book-patterns/{topic}")
+async def get_book_patterns(
+    topic: str, 
+    recommender = Depends(get_question_recommender)
+):
+    """
+    Triggers the AI to search the textbook for questions matching the topic.
+    """
+    try:
+        # We wrap the topic in a list because your QuestionRecommender expects a list
+        results = recommender.get_book_recommendations([topic])
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
