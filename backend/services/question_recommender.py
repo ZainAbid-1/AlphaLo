@@ -19,7 +19,7 @@ class QuestionRecommender:
         # Connect to the existing Pinecone index
         # alling PineconeVectorStore automatically goes into the code's .env file and looks for API key
         # with a name exactly as "PINECONE_API_KEY" and then look for index name provided.
-        textbook_searcher = PineconeVectorStore(index_name="txtbook-index", embedding=self.embedding_model)
+        textbook_searcher = PineconeVectorStore(index_name="alphalo-index", embedding=self.embedding_model, text_key='text')
 
         # Setup the Chain
         qa_chain = RetrievalQA.from_chain_type(
