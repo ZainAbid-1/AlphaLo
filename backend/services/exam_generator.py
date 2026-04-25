@@ -13,8 +13,6 @@ class ExamGeneratorService:
             timeout=120,
             max_tokens=16384
         )
-        # In-memory cache: stores parsed blueprint per (course, instructor, paper_type)
-        self._blueprint_cache: dict[str, list] = {}
 
     def _clean_json(self, raw_output):
         """Robustly extract a JSON array from LLM output using bracket matching."""
@@ -109,37 +107,21 @@ Past Paper Text:
     async def generate(self, raw_content: str, generation_count: int, cache_key: str = ""):
         if generation_count == 0:
             print("DEBUG: Generating Original Blueprint (Count 0)...")
-            # For the first view, use a single optimized call for speed
             prompt = self._get_extraction_prompt(raw_content)
             response = await self.llm.ainvoke(prompt)
             print("DEBUG: Original Blueprint generation complete.")
             data = json.loads(self._clean_json(response.content))
-            
-            # Cache the parsed blueprint for future "harder" generations
-            if cache_key:
-                self._blueprint_cache[cache_key] = data
-                print(f"DEBUG: Cached blueprint under key '{cache_key}' ({len(data)} questions)")
         else:
             print(f"DEBUG: Generating Modded Challenge (Count {generation_count})...")
+            # Always extract blueprint fresh
+            print(f"DEBUG: Extracting blueprint from {len(raw_content)} chars...")
+            extract_prompt = self._get_extraction_prompt(raw_content)
+            response = await self.llm.ainvoke(extract_prompt)
+            blueprint = json.loads(self._clean_json(response.content))
             
-            # OPTIMIZATION: Use cached blueprint if available (skips the slow extraction step)
-            if cache_key and cache_key in self._blueprint_cache:
-                blueprint = self._blueprint_cache[cache_key]
-                print(f"DEBUG: Using CACHED blueprint ({len(blueprint)} questions) — skipped extraction!")
-            else:
-                # Fallback: extract blueprint from raw content (first time without cache)
-                print(f"DEBUG: No cached blueprint, extracting from {len(raw_content)} chars...")
-                extract_prompt = self._get_extraction_prompt(raw_content)
-                response = await self.llm.ainvoke(extract_prompt)
-                blueprint = json.loads(self._clean_json(response.content))
-                
-                # Cache it for next time
-                if cache_key:
-                    self._blueprint_cache[cache_key] = blueprint
-                    print(f"DEBUG: Cached blueprint under key '{cache_key}' ({len(blueprint)} questions)")
-            
-            # OPTIMIZATION: Single LLM call for ALL questions (avoids free-tier rate limits)
+            # Then harden it
             data = await self._harden_all_questions(blueprint)
+
 
         # Post-processing
         for q in data:

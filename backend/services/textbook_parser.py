@@ -27,7 +27,7 @@ class TextbookIngestor:
         print(f"Created {len(chunks)} chunks.")
         return chunks
 
-def vectorization(self, chunks):
+    def vectorization(self, chunks):
         print(f"Starting embedding & Pinecone upload for {len(chunks)} chunks...")
         
         batch_size = 200
@@ -51,4 +51,4 @@ def vectorization(self, chunks):
                 vectors.add_documents(batch)
                 
         print("Vectorization complete!")
-        return vectors
+        return vectors
