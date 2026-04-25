@@ -33,11 +33,23 @@ class QuestionRecommender:
         # This single line converts 'exam_question' to vector, searches 'k' most similar vectors from pinecone,
         # automatically create a prompt and send it to Gemini 2.5 Flash.
         for question in exam_questions:
-            response = qa_chain.invoke(f"Based on the textbook, find exercises related to: {question}.")
+            # We make the prompt much more specific here:
+            prompt = f"""
+            Topic from Exam: {question}
+            
+            Task: 
+            1. Look at the textbook chunks provided. 
+            2. Identify the most relevant 'Practice Exercise', 'Review Question', or 'Problem'.
+            3. Provide the ACTUAL TEXT of the question so the student can solve it here.
+            4. Mention the Page Number if it is available in the context.
+            
+            If no specific exercise is found, summarize the most important concept from these pages.
+            """
+            
+            response = qa_chain.invoke(prompt)
             all_recommendations.append({
                 "original_question": question,
                 "recommendation": response['result']
             })
-
         # returns the original past paper question along with the recommended questions from textbook.
         return all_recommendations
