@@ -24,10 +24,18 @@ class QuestionRecommender:
 
         all_recommendations = []
 
-        for question in exam_questions:
+        for q_item in exam_questions:
+            # Handle both old string format and new dict format
+            if isinstance(q_item, dict):
+                q_text = q_item.get('text', '')
+                q_options = " ".join(q_item.get('options', []))
+                full_q_context = f"{q_text} {q_options}"
+            else:
+                full_q_context = q_item
+                q_item = {"text": q_item, "options": []}
+
             # UNIVERSAL ACT: Create a subject-agnostic, exercise-biased search query
-            # We use terms that apply to Math (Calculus/Discrete), Science, and Engineering
-            search_query = f"{question} worked example practice problem exercise review question self-test chapter end"
+            search_query = f"{full_q_context} worked example practice problem exercise review question self-test chapter end"
             
             # Retrieve the top 17 most relevant chunks
             docs = vector_store.similarity_search(search_query, k=17)
@@ -35,7 +43,7 @@ class QuestionRecommender:
 
             instruction = f"""
             You are a Universal Academic Specialist. 
-            Exam Context (The Student's Target): "{question}"
+            Exam Context (The Student's Target): "{full_q_context}"
             
             Textbook Context (Available Resources):
             ---
@@ -59,7 +67,7 @@ class QuestionRecommender:
             
             response = self.llm.invoke(instruction)
             all_recommendations.append({
-                "original_question": question,
+                "original_question": q_item,
                 "recommendation": response.content
             })
 

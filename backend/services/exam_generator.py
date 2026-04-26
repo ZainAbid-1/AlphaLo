@@ -80,7 +80,8 @@ STRUCTURE RULES:
 
 CRITICAL RULES:
 - DO NOT SKIP ANY PART: If the paper has 5 sub-parts (i to v), the "sub_questions" array MUST have length 5.
-- DETECT ALL QUESTIONS: Some questions might not be explicitly labeled "Question X" but are clearly new problems. If you see a major new topic or a large gap, treat it as a new main question.
+- DETECT ALL QUESTIONS: Scan the ENTIRE document from start to finish. Some questions might not be explicitly labeled "Question X" but are clearly new problems. If you see a major new topic or a large gap, treat it as a new main question.
+- CAPTURE THE END: Pay special attention to the end of the document. Do not truncate your analysis before the very last line of text.
 - KEEP TABLES & CODE: Reconstruct tables as Markdown and code as markdown blocks.
 - OMIT ONLY: Page numbers, "Total Marks", and university headers.
 
@@ -109,7 +110,7 @@ EXAMPLE OUTPUT STRUCTURE:
 ]
 
 Past Paper Text:
-{raw_content[:25000]}"""
+{raw_content[:100000]}"""
 
     async def extract_blueprint(self, raw_content: str) -> list:
         """Extracts the structural blueprint from raw past paper text."""

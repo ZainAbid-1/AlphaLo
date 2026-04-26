@@ -7,24 +7,6 @@ export default function BookCorrelation() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Helper to parse question and extract options (e.g., "a. ... b. ...")
-  const parseQuestion = (text: string) => {
-    const optionsRegex = /\s([a-d])\.\s/gi;
-    const parts = text.split(optionsRegex);
-    
-    if (parts.length > 1) {
-      const questionText = parts[0].trim();
-      const options: string[] = [];
-      for (let i = 1; i < parts.length; i += 2) {
-        if (parts[i+1]) {
-          options.push(parts[i+1].trim());
-        }
-      }
-      return { questionText, options };
-    }
-    return { questionText: text, options: [] };
-  };
-
   // 1. Catch the AI data sent from Dashboard
   const { recommendations, topic } = location.state || {}; 
 
@@ -44,6 +26,65 @@ export default function BookCorrelation() {
       </div>
     );
   }
+
+  // Shared Markdown Components for both Exam Pattern and Recommendation
+  const MarkdownComponents: any = {
+    h1: ({ node, ...props }: any) => <h1 className="text-2xl font-bold text-white mb-4 mt-8 first:mt-0" {...props} />,
+    h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold text-[#10B981] mb-4 mt-8 first:mt-0 flex items-center gap-2" {...props} />,
+    h3: ({ node, ...props }: any) => <h3 className="text-lg font-bold text-white/90 mb-3 mt-6" {...props} />,
+    p: ({ node, ...props }: any) => <p className="mb-4 leading-relaxed text-gray-300" {...props} />,
+    ul: ({ node, ...props }: any) => <ul className="list-disc pl-5 mb-4 space-y-2 text-gray-300" {...props} />,
+    li: ({ node, ...props }: any) => <li className="leading-relaxed" {...props} />,
+    strong: ({ node, ...props }: any) => <strong className="text-white font-bold" {...props} />,
+    code: ({ node, inline, className, children, ...props }: any) => {
+      const match = /language-(\w+)/.exec(className || '');
+      const language = match ? match[1] : '';
+      const content = String(children).replace(/\n$/, '');
+      const isMultiLine = content.includes('\n');
+      
+      // FORCE Mac window for any code block (non-inline) or multi-line content
+      const useMacWindow = !inline && (isMultiLine || language);
+
+      if (inline) {
+        return (
+          <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sm text-[#A5B4FC]" {...props}>
+            {children}
+          </code>
+        );
+      }
+
+      if (!useMacWindow) {
+        return (
+          <code className="font-mono text-[#A5B4FC]" {...props}>
+            {children}
+          </code>
+        );
+      }
+
+      return (
+        <div className="my-8 relative group">
+          <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+          <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
+              </div>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{language || 'code'}</span>
+            </div>
+            <div className="p-6 overflow-x-auto">
+              <pre className="m-0 text-[#E0E7FF] leading-relaxed">
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      );
+    },
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8">
@@ -82,7 +123,31 @@ export default function BookCorrelation() {
         {/* Recommendations Loop */}
         <div className="space-y-12">
           {recommendations.map((item: any, index: number) => {
-            const { questionText, options } = parseQuestion(item.original_question);
+            // New structured format from backend
+            const qObj = item.original_question;
+            let questionText = typeof qObj === 'string' ? qObj : qObj.text;
+            const options = Array.isArray(qObj?.options) ? qObj.options : [];
+            
+            // HEURISTIC SAFETY NET: If the AI forgot to wrap code in backticks, do it manually
+            // We look for common code patterns like 'class X {', 'public static', etc.
+            const codePatterns = [
+              /class\s+\w+\s*\{/,
+              /public\s+static\s+void/,
+              /System\.out\.println/,
+              /\{[\s\S]*\}/ // Any block with curly braces
+            ];
+            
+            const looksLikeUnwrappedCode = codePatterns.some(pattern => pattern.test(questionText)) && !questionText.includes('```');
+            
+            if (looksLikeUnwrappedCode) {
+              // Try to find where the code starts (usually after a label like '2.2')
+              const codeStartMatch = questionText.match(/(\d+\.\d+)\s+([\s\S]*)/);
+              if (codeStartMatch) {
+                questionText = `${codeStartMatch[1]}\n\n\`\`\`java\n${codeStartMatch[2]}\n\`\`\``;
+              } else {
+                questionText = `\`\`\`java\n${questionText}\n\`\`\``;
+              }
+            }
             
             return (
               <div key={index} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
@@ -98,14 +163,14 @@ export default function BookCorrelation() {
                   
                   <div className="space-y-6">
                     <div className="text-gray-200 text-lg leading-relaxed font-medium">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
                         {questionText}
                       </ReactMarkdown>
                     </div>
 
                     {options.length > 0 && (
                       <div className="grid grid-cols-1 gap-3">
-                        {options.map((option, optIndex) => (
+                        {options.map((option: string, optIndex: number) => (
                           <div
                             key={optIndex}
                             className="p-4 rounded-xl border border-white/5 bg-white/5 text-gray-300 flex items-center gap-4 transition-all"
@@ -140,69 +205,14 @@ export default function BookCorrelation() {
                     <div className="prose prose-invert max-w-none text-gray-200">
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-white mb-4 mt-8 first:mt-0" {...props} />,
-                          h2: ({ node, ...props }) => <h2 className="text-xl font-bold text-[#10B981] mb-4 mt-8 first:mt-0 flex items-center gap-2" {...props} />,
-                          h3: ({ node, ...props }) => <h3 className="text-lg font-bold text-white/90 mb-3 mt-6" {...props} />,
-                          p: ({ node, ...props }) => <p className="mb-4 leading-relaxed text-gray-300" {...props} />,
-                          ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-gray-300" {...props} />,
-                          li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
-                          strong: ({ node, ...props }) => <strong className="text-white font-bold" {...props} />,
-                          code: ({ node, inline, className, children, ...props }: any) => {
-                            const match = /language-(\w+)/.exec(className || '');
-                            const language = match ? match[1] : '';
-                            const content = String(children).replace(/\n$/, '');
-                            const isMultiLine = content.includes('\n');
-                            
-                            const useMacWindow = !inline && (isMultiLine || (language && language !== 'code' && language !== 'text'));
-
-                            if (inline) {
-                              return (
-                                <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sm text-[#A5B4FC]" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            }
-
-                            if (!useMacWindow) {
-                              return (
-                                <code className="font-mono text-[#A5B4FC]" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            }
-
-                            return (
-                              <div className="my-8 relative group">
-                                <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
-                                  <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                                    <div className="flex gap-1.5">
-                                      <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
-                                      <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
-                                      <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
-                                    </div>
-                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{language || 'code'}</span>
-                                  </div>
-                                  <div className="p-6 overflow-x-auto">
-                                    <pre className="m-0 text-[#E0E7FF] leading-relaxed">
-                                      <code className={className} {...props}>
-                                        {children}
-                                      </code>
-                                    </pre>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          },
-                        }}
+                        components={MarkdownComponents}
                       >
                         {item.recommendation}
                       </ReactMarkdown>
                     </div>
                   </div>
                   <div className="px-8 py-4 bg-white/5 border-t border-white/10 flex justify-between items-center">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                    <p className="text-[10px] text-gray-500 uppercase tracking widest font-bold">
                       Textbook Semantic Mapping
                     </p>
                     <div className="flex items-center gap-1.5">
@@ -226,4 +236,4 @@ export default function BookCorrelation() {
       </div>
     </div>
   );
-}
+}
