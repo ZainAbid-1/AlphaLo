@@ -32,17 +32,20 @@ class QuestionRecommender:
         all_recommendations = []
 
         for question in exam_questions:
-            # We change the instruction to be more flexible and helpful
             instruction = f"""
-            The instructor's exam pattern is: "{question}"
+            Exam Topic: "{question}"
             
-            Task based on the retrieved textbook context:
-            1. Look for a specific 'Practice Problem', 'Check Point', or 'Exercise' that matches this pattern.
-            2. If found, provide the Exercise ID and the full text of the question.
-            3. If NO specific exercise is found, do NOT say 'I don't know'. Instead, use the 
-               textbook theory to explain the core concept and suggest a 'Self-Study Task' 
-               for the student to master this topic.
-            4. Always include the Page Number if it is mentioned in the text.
+            Task:
+            1. Search the textbook context for a matching 'Check Point', 'Exercise', or 'Problem'.
+            2. If found, provide it under the heading: "📖 MATCHING EXERCISE".
+            3. If no literal exercise is found, create a specific practice task based on the theory under the heading: "🛠️ MASTERY CHALLENGE".
+            4. Provide a 2-sentence summary of the core concept under: "💡 KEY CONCEPT".
+            5. State the Page Number if visible.
+
+            CRITICAL RULES:
+            - DO NOT start with "I don't see an exercise" or "The context doesn't contain". 
+            - Use CLEAR HEADINGS.
+            - Be concise. No fluff.
             """
             
             response = qa_chain.invoke(instruction)
