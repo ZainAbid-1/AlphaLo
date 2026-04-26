@@ -16,45 +16,51 @@ class QuestionRecommender:
 
     def get_book_recommendations(self, exam_questions):
         # Connect to index
-        textbook_searcher = PineconeVectorStore(
+        vector_store = PineconeVectorStore(
             index_name="alphalo-index", 
             embedding=self.embedding_model,
-            text_key="text" # Ensures AI reads the actual sentences
+            text_key="text" 
         )
 
-        # Setup the Chain
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff", 
-            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 12}) # Higher k for better recall
-        )
-        
         all_recommendations = []
 
         for question in exam_questions:
-            instruction = f"""
-            Exam Context: "{question}"
+            # UNIVERSAL ACT: Create a subject-agnostic, exercise-biased search query
+            # We use terms that apply to Math (Calculus/Discrete), Science, and Engineering
+            search_query = f"{question} worked example practice problem exercise review question self-test chapter end"
             
-            Task:
-            1. Scour the textbook context for a matching 'Check Point', 'Exercise', 'Review Question', or 'Programming Problem' that aligns with the exam context.
-            2. If you find a direct or highly similar exercise, reproduce it exactly under: "**📖 MATCHING EXERCISE**".
-            3. CRITICAL: State the Page Number. If not explicitly found, state "Page: [Refer to topic section]".
-            4. If no literal exercise exists, design a tailored practice task under: "**🛠️ MASTERY CHALLENGE**".
-            5. Summarize the core theoretical takeaway under: "**💡 KEY CONCEPT**".
+            # Retrieve the top 17 most relevant chunks
+            docs = vector_store.similarity_search(search_query, k=17)
+            context = "\n\n".join([d.page_content for d in docs])
+
+            instruction = f"""
+            You are a Universal Academic Specialist. 
+            Exam Context (The Student's Target): "{question}"
+            
+            Textbook Context (Available Resources):
+            ---
+            {context}
+            ---
+
+            TASK:
+            1. Scour the Textbook Context for a matching 'Worked Example', 'Practice Problem', 'Check Point', or 'Chapter-End Exercise' that aligns with the logic, difficulty, and theme of the Exam Context.
+            2. If you find a direct or highly similar match, reproduce it FULLY under: "**📖 MATCHING EXERCISE**".
+            3. MANDATORY: State the Page Number or Section. If not explicitly found, estimate based on the context or state "Page: [See Chapter Reference]".
+            4. If no literal exercise exists, design a high-quality "Mastery Challenge" that perfectly bridges the theory in the context to the student's exam target under: "**🛠️ MASTERY CHALLENGE**".
+            5. Provide a 2-sentence strategic summary of the core academic principle under: "**💡 KEY CONCEPT**".
             
             FORMATTING RULES:
             - Use professional Markdown.
-            - Use **single backticks** (`like this`) for keywords, class names, or single-line constants.
-            - Use **triple backticks** (```java ... ```) ONLY for multi-line code blocks or complete programs.
-            - DO NOT box single words in triple backticks.
-            - Ensure headings are bold.
-            - Be concise but thorough.
+            - Use **single backticks** (`like this`) for technical terms, variables, or short formulas.
+            - Use **triple backticks** (``` ... ```) for technical blocks (Code, LaTeX formulas, Truth Tables, or long Equations).
+            - Ensure headers are bold.
+            - Be concise, formal, and academically precise.
             """
             
-            response = qa_chain.invoke(instruction)
+            response = self.llm.invoke(instruction)
             all_recommendations.append({
                 "original_question": question,
-                "recommendation": response['result']
+                "recommendation": response.content
             })
 
         return all_recommendations
