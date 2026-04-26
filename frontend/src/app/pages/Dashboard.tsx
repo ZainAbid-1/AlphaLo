@@ -31,10 +31,10 @@ export default function Dashboard() {
   const handleBookPatterns = async (topicName: string) => {
     try {
       // 1. Call the AI route we created in the backend
-      const response = await api.get(`/student/book-patterns/${topicName}`);
+      const response = await api.get(`/student/book-patterns/${courseId}/${topicName}`);
       
       // 2. Navigate to the correlation page and pass the AI data
-// This matches your existing route '/correlation/:topicId'
+      // This matches your existing route '/correlation/:topicId'
       navigate(`/correlation/ai-result`, { 
         state: { recommendations: response.data, topic: topicName } 
       });

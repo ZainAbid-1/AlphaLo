@@ -18,35 +18,26 @@ class QuestionExctractor:
         exam_text = " ".join([doc.page_content for doc in docs])
         return exam_text
 
-    def get_questions(self,exam_text):
+    def get_questions(self, exam_text:str, topic_name:str):
         prompt = f"""
-        I am providing the raw text extracted from a university past paper:
+        You are a strict academic filter. 
+        Topic: "{topic_name}"
+        Raw Exam Text:
         ---
         {exam_text}
         ---
 
         TASK:
-        1. Parse the text and identify every individual question or sub-question.
-        2. For each question, create a "Self-Contained String." This means if a question refers to 
-        a previous context (e.g., "Discuss the code snippet above"), rewrite it to include that 
-        context (e.g., "Discuss the implementation of [Topic] in a code snippet").
-        3. Combine sub-parts (like 1a, 1b) into a single string if they relate to the same concept.
-        4. Remove all "Administrative Noise":
-        - Ignore "Total Marks," "Question 1," "Section A," or "Time: 3 Hours."
-        - Ignore page numbers and university headers.
-        5. Formatting: Return the results ONLY as a valid JSON list of strings.
-
-        Example Output:
-        [
-        "Explain the difference between Method Overloading and Overriding with a Java code example.",
-        "Describe the concept of Encapsulation and how private access modifiers enforce it.",
-        "Write a recursive function to calculate the Fibonacci sequence and analyze its space complexity."
-        ]
-
+        1. Scan the exam text for questions that ONLY relate to "{topic_name}".
+        2. If a question is about a different topic (e.g. Arrays or Basics), IGNORE it.
+        3. Rewrite the relevant questions to be self-contained.
+        4. If ZERO questions in the exam relate to "{topic_name}", return an empty list: [].
+        5. Formatting: Return the result ONLY as a valid JSON list of strings.
         """
 
         response = self.llm.invoke(prompt)
-
-        # AI often wraps JSON in ```json blocks, strip those blocks
         clean_json = response.content.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_json)
+        
+        # MLOps Logic: If the exam has nothing, we fallback to searching the topic itself
+        extracted = json.loads(clean_json)
+        return extracted if len(extracted) > 0 else [topic_name]

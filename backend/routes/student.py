@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from dependencies import get_exam_generator
 from services.supabase_client import supabase  # <-- Supabase client
-from dependencies import get_question_recommender
+from dependencies import get_question_recommender, get_question_extractor
 
 router = APIRouter()
 
@@ -82,17 +82,28 @@ async def display_exam(request: DisplayExamRequest):
         print("Failed to generate/parse JSON:", e)
         raise HTTPException(status_code=500, detail="AI generation failed to produce valid JSON.")
     
-@router.get("/book-patterns/{topic}")
+@router.get("/book-patterns/{course_id}/{topic_name}")
 async def get_book_patterns(
-    topic: str, 
+    course_id: str, 
+    topic_name: str, 
+    extractor = Depends(get_question_extractor),
     recommender = Depends(get_question_recommender)
 ):
-    """
-    Triggers the AI to search the textbook for questions matching the topic.
-    """
-    try:
-        # We wrap the topic in a list because your QuestionRecommender expects a list
-        results = recommender.get_book_recommendations([topic])
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # 1. FETCH the Instructor's Past Paper text from Supabase
+    res = supabase.table("past_papers").select("raw_content") \
+        .eq("course_id", course_id).execute()
+    
+    if not res.data:
+        # FALLBACK: If no paper is uploaded, just search the topic name
+        patterns_to_search = [topic_name]
+    else:
+        # 2. AI EXTRACTION: Find instructor-specific questions about this topic
+        full_paper_text = res.data[0]["raw_content"]
+        
+        # We use Gemini to pull only the 'Introduction' questions from the messy paper
+        patterns_to_search = extractor.get_questions(full_paper_text, topic_name)
+
+    # 3. SEARCH THE BOOK: Use those specific instructor questions to find book matches
+    recommendations = recommender.get_book_recommendations(patterns_to_search)
+    
+    return recommendations

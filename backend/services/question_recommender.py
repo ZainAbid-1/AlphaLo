@@ -15,41 +15,40 @@ class QuestionRecommender:
         )
 
     def get_book_recommendations(self, exam_questions):
-        
-        # Connect to the existing Pinecone index
-        # alling PineconeVectorStore automatically goes into the code's .env file and looks for API key
-        # with a name exactly as "PINECONE_API_KEY" and then look for index name provided.
-        textbook_searcher = PineconeVectorStore(index_name="alphalo-index", embedding=self.embedding_model, text_key='text')
+        # Connect to index
+        textbook_searcher = PineconeVectorStore(
+            index_name="alphalo-index", 
+            embedding=self.embedding_model,
+            text_key="text" # Ensures AI reads the actual sentences
+        )
 
         # Setup the Chain
         qa_chain = RetrievalQA.from_chain_type(
-            llm = self.llm, # the LLM we will be using
-            chain_type = "stuff", # 'stuff' acts as .join, it stuffs all the Top k similar chunks together
-            retriever = textbook_searcher.as_retriever() # sets pinecone as the platform to retrieve
+            llm=self.llm,
+            chain_type="stuff", 
+            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 7}) # Increased k for better recall
         )
         
         all_recommendations = []
 
-        # This single line converts 'exam_question' to vector, searches 'k' most similar vectors from pinecone,
-        # automatically create a prompt and send it to Gemini 2.5 Flash.
         for question in exam_questions:
-            # We make the prompt much more specific here:
-            prompt = f"""
-            Topic from Exam: {question}
+            # We change the instruction to be more flexible and helpful
+            instruction = f"""
+            The instructor's exam pattern is: "{question}"
             
-            Task: 
-            1. Look at the textbook chunks provided. 
-            2. Identify the most relevant 'Practice Exercise', 'Review Question', or 'Problem'.
-            3. Provide the ACTUAL TEXT of the question so the student can solve it here.
-            4. Mention the Page Number if it is available in the context.
-            
-            If no specific exercise is found, summarize the most important concept from these pages.
+            Task based on the retrieved textbook context:
+            1. Look for a specific 'Practice Problem', 'Check Point', or 'Exercise' that matches this pattern.
+            2. If found, provide the Exercise ID and the full text of the question.
+            3. If NO specific exercise is found, do NOT say 'I don't know'. Instead, use the 
+               textbook theory to explain the core concept and suggest a 'Self-Study Task' 
+               for the student to master this topic.
+            4. Always include the Page Number if it is mentioned in the text.
             """
             
-            response = qa_chain.invoke(prompt)
+            response = qa_chain.invoke(instruction)
             all_recommendations.append({
                 "original_question": question,
                 "recommendation": response['result']
             })
-        # returns the original past paper question along with the recommended questions from textbook.
+
         return all_recommendations
