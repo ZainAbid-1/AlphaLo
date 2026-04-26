@@ -26,26 +26,31 @@ class QuestionRecommender:
         qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type="stuff", 
-            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 7}) # Increased k for better recall
+            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 15}) # Increased k for better recall
         )
         
         all_recommendations = []
 
         for question in exam_questions:
             instruction = f"""
-            Exam Topic: "{question}"
+            The instructor's exam question is: "{question}"
             
-            Task:
-            1. Search the textbook context for a matching 'Check Point', 'Exercise', or 'Problem'.
-            2. If found, provide it under the heading: "📖 MATCHING EXERCISE".
-            3. If no literal exercise is found, create a specific practice task based on the theory under the heading: "🛠️ MASTERY CHALLENGE".
-            4. Provide a 2-sentence summary of the core concept under: "💡 KEY CONCEPT".
-            5. State the Page Number if visible.
+            TASK:
+            You are an Exercise Scavenger. Your ONLY goal is to find the most similar 
+            ACTUAL textbook question from the provided context.
 
-            CRITICAL RULES:
-            - DO NOT start with "I don't see an exercise" or "The context doesn't contain". 
-            - Use CLEAR HEADINGS.
-            - Be concise. No fluff.
+            1. Scan the text for specific markers like "Exercise X.X", "Check Point X.X", 
+               "Programming Exercise", or "Review Question".
+            2. If you find a matching question, provide the Heading and the ACTUAL TEXT of the question.
+            3. If you see multiple, pick the one that matches the DIFFICULTY of the exam pattern.
+            4. If no literal question is found in these 15 chunks, take the most important 
+               theoretical "Self-Test" point from the text and phrase it as a question.
+            5. Always include the Page Number.
+
+            OUTPUT FORMAT:
+            📖 BOOK EXERCISE: [Exercise ID]
+            📝 QUESTION TEXT: [The full text]
+            📍 LOCATION: Page [Number]
             """
             
             response = qa_chain.invoke(instruction)
