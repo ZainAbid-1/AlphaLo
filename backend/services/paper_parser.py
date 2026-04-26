@@ -26,19 +26,21 @@ class QuestionExtractor:
 
     def get_questions(self, exam_text: str, topic_name: str):
         prompt = f"""
-        You are a strict academic filter. 
-        Topic: "{topic_name}"
+        You are a senior academic analyst. 
+        Focus Topic: "{topic_name}"
         Raw Exam Text:
         ---
         {exam_text}
         ---
 
         TASK:
-        1. Scan the exam text for questions that ONLY relate to "{topic_name}".
-        2. If a question is about a different topic (e.g. Arrays or Basics), IGNORE it.
-        3. Rewrite the relevant questions to be self-contained.
-        4. If ZERO questions in the exam relate to "{topic_name}", return an empty list: [].
-        5. Formatting: Return the result ONLY as a valid JSON list of strings.
+        1. Scan the exam text for questions that specifically target "{topic_name}" or its core sub-concepts.
+        2. If a question is generic or belongs to a different module, EXCLUDE it.
+        3. MANDATORY: Reproduce the relevant questions FULLY. Include all multiple-choice options (A, B, C, D), marks allocated (e.g., [5]), and any provided code snippets or scenarios. 
+        4. If the question has sub-parts (i, ii, iii), include those too.
+        5. Rewrite ONLY to improve clarity if the PDF extraction is messy, but DO NOT remove content.
+        6. Return the result ONLY as a valid JSON list of strings: ["Full Question 1 with Options...", "Full Question 2..."].
+        7. If no matches exist, return: [].
         """
 
         response = self.llm.invoke(prompt)

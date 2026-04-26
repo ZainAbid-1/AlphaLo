@@ -8,6 +8,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingPatterns, setGeneratingPatterns] = useState(false);
+  
   
   // Get current instructor name from Wizard selection
   const currentInstructor = localStorage.getItem('selectedInstructorName') || "Your Instructor";
@@ -30,17 +32,19 @@ export default function Dashboard() {
   // --- ADD THIS HANDLER ---
   const handleBookPatterns = async (topicName: string) => {
     try {
+      setGeneratingPatterns(true);
       // 1. Call the AI route we created in the backend
       const response = await api.get(`/student/book-patterns/${courseId}/${topicName}`);
       
       // 2. Navigate to the correlation page and pass the AI data
-      // This matches your existing route '/correlation/:topicId'
       navigate(`/correlation/ai-result`, { 
         state: { recommendations: response.data, topic: topicName } 
       });
     } catch (error) {
       console.error("AI Search failed:", error);
       alert("AI Search failed. Check if the backend is running and textbook is indexed.");
+    } finally {
+      setGeneratingPatterns(false);
     }
   };
   // ----------------------
@@ -230,6 +234,28 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* --- LOADING OVERLAY --- */}
+      {generatingPatterns && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/40">
+          <div className="bg-[#1A2B48] border border-white/20 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4">
+            <div className="relative w-20 h-20 mb-6">
+              <div className="absolute inset-0 border-4 border-[#7C3AED]/20 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin"></div>
+              <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-[#7C3AED] animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2 text-center">Analyzing Patterns</h2>
+            <p className="text-gray-400 text-sm text-center">
+              Scanning your instructor's past papers and mapping them to textbook exercises...
+            </p>
+            <div className="mt-6 flex gap-1">
+              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce"></div>
+              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

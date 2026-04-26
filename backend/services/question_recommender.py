@@ -26,26 +26,29 @@ class QuestionRecommender:
         qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type="stuff", 
-            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 7}) # Increased k for better recall
+            retriever=textbook_searcher.as_retriever(search_kwargs={"k": 12}) # Higher k for better recall
         )
         
         all_recommendations = []
 
         for question in exam_questions:
             instruction = f"""
-            Exam Topic: "{question}"
+            Exam Context: "{question}"
             
             Task:
-            1. Search the textbook context for a matching 'Check Point', 'Exercise', or 'Problem'.
-            2. If found, provide it under the heading: "📖 MATCHING EXERCISE".
-            3. If no literal exercise is found, create a specific practice task based on the theory under the heading: "🛠️ MASTERY CHALLENGE".
-            4. Provide a 2-sentence summary of the core concept under: "💡 KEY CONCEPT".
-            5. State the Page Number if visible.
-
-            CRITICAL RULES:
-            - DO NOT start with "I don't see an exercise" or "The context doesn't contain". 
-            - Use CLEAR HEADINGS.
-            - Be concise. No fluff.
+            1. Scour the textbook context for a matching 'Check Point', 'Exercise', 'Review Question', or 'Programming Problem' that aligns with the exam context.
+            2. If you find a direct or highly similar exercise, reproduce it exactly under: "**📖 MATCHING EXERCISE**".
+            3. CRITICAL: State the Page Number. If not explicitly found, state "Page: [Refer to topic section]".
+            4. If no literal exercise exists, design a tailored practice task under: "**🛠️ MASTERY CHALLENGE**".
+            5. Summarize the core theoretical takeaway under: "**💡 KEY CONCEPT**".
+            
+            FORMATTING RULES:
+            - Use professional Markdown.
+            - Use **single backticks** (`like this`) for keywords, class names, or single-line constants.
+            - Use **triple backticks** (```java ... ```) ONLY for multi-line code blocks or complete programs.
+            - DO NOT box single words in triple backticks.
+            - Ensure headings are bold.
+            - Be concise but thorough.
             """
             
             response = qa_chain.invoke(instruction)
