@@ -4,8 +4,7 @@ import Wizard from './pages/Wizard';
 import Dashboard from './pages/Dashboard';
 import MockExam from './pages/MockExam';
 import BookCorrelation from './pages/BookCorrelation';
-import Analytics from './pages/Analytics';
-import AdminDashboard from './pages/AdminDashboard'; // <-- 1. Added this import
+import AdminDashboard from './pages/AdminDashboard';
 
 export const router = createBrowserRouter([
   {
@@ -28,12 +27,9 @@ export const router = createBrowserRouter([
     path: '/correlation/:topicId',
     Component: BookCorrelation,
   },
+
   {
-    path: '/analytics',
-    Component: Analytics,
-  },
-  {
-    path: '/admin',                      // <-- 2. Added the Admin route
+    path: '/admin',
     Component: AdminDashboard,
   },
 ]);

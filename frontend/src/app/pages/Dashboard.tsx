@@ -72,13 +72,6 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/analytics')}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-all flex items-center gap-2"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Analytics
-            </button>
-            <button
               onClick={() => navigate('/')}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-all flex items-center gap-2"
             >

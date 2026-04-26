@@ -36,25 +36,14 @@ export default function MockExam() {
     return <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] flex items-center justify-center text-white">Loading Module...</div>;
   }
 
-  const getGenerationCount = () => {
-    const count = localStorage.getItem(`past_paper_gen_count_${courseId}`);
-    return count ? parseInt(count, 10) : 0;
-  };
-
-  const incrementGenerationCount = () => {
-    const count = getGenerationCount();
-    localStorage.setItem(`past_paper_gen_count_${courseId}`, (count + 1).toString());
-  };
-
   const handleStartExam = async () => {
     try {
       setLoadingQuestions(true);
-      const generationCount = getGenerationCount();
       
       const res = await api.post('/student/displayexam', {
         course_id: courseId,
         instructor_id: instructorId,
-        generation_count: generationCount,
+        generation_count: 0, // No longer used for logic, but kept for API compatibility if needed
         paper_type: selectedPaperType,
       });
 
@@ -76,9 +65,6 @@ export default function MockExam() {
       });
       setTopicQuestions(formattedQuestions);
       setExamStarted(true);
-      
-      // Increment only after success
-      incrementGenerationCount();
     } catch (error: any) {
       console.error("Failed to fetch questions:", error);
       const rawDetail = error?.response?.data?.detail;
@@ -93,7 +79,6 @@ export default function MockExam() {
     }
   };
 
-  const generationCount = getGenerationCount();
 
   if (!examStarted) {
     return (
@@ -112,9 +97,9 @@ export default function MockExam() {
               <FileText className="w-12 h-12 text-white" />
             </div>
             
-            <h1 className="text-4xl font-bold text-white mb-2">Past Paper Presenter</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">Past Paper Simulator</h1>
             <p className="text-gray-300 text-lg mb-8 max-w-lg">
-              View the uploaded past paper formatted cleanly for your screen. Subsequent generations will intelligently invent new questions guided by the original structural blueprint.
+              This AI simulator generates a parallel practice exam based on the structural blueprint of the original paper while changing all specific values and scenarios for fresh practice.
             </p>
 
             <div className="bg-white/5 border border-white/20 rounded-2xl p-6 w-full max-w-md mb-8">
@@ -122,14 +107,11 @@ export default function MockExam() {
                 <span className="text-gray-400">Course</span>
                 <span className="text-white font-semibold uppercase">{courseId}</span>
               </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400">Times Generated</span>
-                <span className="text-white font-semibold">{generationCount}</span>
-              </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-400">Current Mode</span>
-                <span className={generationCount === 0 ? "text-[#3B82F6] font-semibold" : "text-[#10B981] font-semibold"}>
-                  {generationCount === 0 ? 'Original Blueprint' : 'AI Modded Challenge'}
+                <span className="text-gray-400">Status</span>
+                <span className="text-[#10B981] font-semibold flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></div>
+                  AI Simulator Ready
                 </span>
               </div>
             </div>
@@ -160,12 +142,12 @@ export default function MockExam() {
             >
               {loadingQuestions ? (
                 <div className="flex flex-col items-center">
-                  <span className="animate-pulse">Optimizing AI generation...</span>
-                  <span className="text-[10px] font-normal opacity-70 tracking-tight mt-1">Parallelizing batches for faster delivery</span>
+                  <span className="animate-pulse">Generating Practice Exam...</span>
+                  <span className="text-[10px] font-normal opacity-70 tracking-tight mt-1">Mutating structural blueprint for privacy</span>
                 </div>
               ) : (
                 <>
-                  {generationCount === 0 ? 'View Past Paper' : 'Generate Similar Paper'}
+                  Generate Practice Paper
                   <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                 </>
               )}
@@ -237,23 +219,45 @@ export default function MockExam() {
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+                      p: ({ node, ...props }) => <p className="mb-6 last:mb-0" {...props} />,
                       table: ({ node, ...props }) => (
-                        <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-inner">
+                        <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-sm">
                           <table className="w-full text-base text-left border-collapse" {...props} />
                         </div>
                       ),
-                      thead: ({ node, ...props }) => <thead className="bg-white/10 text-sm uppercase font-bold text-gray-300" {...props} />,
-                      th: ({ node, ...props }) => <th className="px-6 py-4 border-b border-white/20" {...props} />,
-                      td: ({ node, ...props }) => <td className="px-6 py-4 border-b border-white/10 text-gray-200" {...props} />,
-                      code: ({ node, inline, ...props }: any) => 
-                        inline ? (
-                          <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sm" {...props} />
+                      thead: ({ node, ...props }) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />,
+                      th: ({ node, ...props }) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
+                      tr: ({ node, ...props }) => <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />,
+                      td: ({ node, ...props }) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
+                      code: ({ node, inline, className, children, ...props }: any) => {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return inline ? (
+                          <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-sm text-[#A5B4FC]" {...props}>
+                            {children}
+                          </code>
                         ) : (
-                          <div className="my-6 p-6 bg-black/40 rounded-2xl border border-white/10 font-mono text-sm overflow-x-auto text-blue-100 shadow-inner">
-                            <pre className="m-0"><code {...props} /></pre>
+                          <div className="my-8 relative group">
+                            <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                            <div className="relative bg-[#0F172A]/80 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
+                              <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+                                <div className="flex gap-1.5">
+                                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
+                                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                                </div>
+                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{match ? match[1] : 'code'}</span>
+                              </div>
+                              <div className="p-6 overflow-x-auto">
+                                <pre className="m-0 text-[#E0E7FF] leading-relaxed">
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                </pre>
+                              </div>
+                            </div>
                           </div>
-                        ),
+                        );
+                      },
                     }}
                   >
                     {q.text}
@@ -269,23 +273,44 @@ export default function MockExam() {
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                              p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
                               table: ({ node, ...props }) => (
-                                <div className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-white/5 shadow-inner">
+                                <div className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-white/5 shadow-inner backdrop-blur-sm">
                                   <table className="w-full text-sm text-left border-collapse" {...props} />
                                 </div>
                               ),
-                              thead: ({ node, ...props }) => <thead className="bg-white/10 text-xs uppercase font-bold text-gray-400" {...props} />,
-                              th: ({ node, ...props }) => <th className="px-4 py-3 border-b border-white/10" {...props} />,
-                              td: ({ node, ...props }) => <td className="px-4 py-3 border-b border-white/5 text-gray-300" {...props} />,
-                              code: ({ node, inline, ...props }: any) => 
-                                inline ? (
-                                  <code className="px-1 py-0.5 rounded bg-white/10 font-mono text-xs" {...props} />
+                              thead: ({ node, ...props }) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-xs uppercase font-black tracking-widest text-gray-400" {...props} />,
+                              th: ({ node, ...props }) => <th className="px-4 py-4 border-b border-white/10" {...props} />,
+                              tr: ({ node, ...props }) => <tr className="border-b border-white/5 transition-colors hover:bg-white/5 even:bg-white/5" {...props} />,
+                              td: ({ node, ...props }) => <td className="px-4 py-3 text-gray-300" {...props} />,
+                              code: ({ node, inline, className, children, ...props }: any) => {
+                                const match = /language-(\w+)/.exec(className || '');
+                                return inline ? (
+                                  <code className="px-1 py-0.5 rounded bg-white/10 font-mono text-xs text-[#A5B4FC]" {...props}>
+                                    {children}
+                                  </code>
                                 ) : (
-                                  <div className="my-4 p-4 bg-black/40 rounded-xl border border-white/10 font-mono text-xs overflow-x-auto text-blue-100 shadow-inner">
-                                    <pre className="m-0"><code {...props} /></pre>
+                                  <div className="my-6 relative group">
+                                    <div className="relative bg-[#0F172A]/80 backdrop-blur-sm rounded-xl border border-white/10 font-mono text-xs overflow-hidden shadow-xl">
+                                      <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
+                                        <div className="flex gap-1">
+                                          <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                                          <div className="w-2 h-2 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
+                                          <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                                        </div>
+                                        <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">{match ? match[1] : 'code'}</span>
+                                      </div>
+                                      <div className="p-4 overflow-x-auto">
+                                        <pre className="m-0 text-[#E0E7FF] leading-relaxed">
+                                          <code className={className} {...props}>
+                                            {children}
+                                          </code>
+                                        </pre>
+                                      </div>
+                                    </div>
                                   </div>
-                                ),
+                                );
+                              },
                             }}
                           >
                             {sq.text}

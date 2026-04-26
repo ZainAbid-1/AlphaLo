@@ -44,14 +44,6 @@ def get_roadmap(course_id: str):
         "complexity": t["complexity"]
     } for t in res.data]
 
-@router.get("/performance/{user_id}")
-def get_performance(user_id: str): # <-- Changed to str to handle Supabase UUIDs
-    res = supabase.table("performance").select("*").eq("user_id", user_id).execute()
-    
-    result = {}
-    for p in res.data:
-        result[p["topic_id"]] = {"score": p["score"], "attempts": p["attempts"]}
-    return result
 
 @router.get("/correlation/{topic_id}")
 def get_correlation(topic_id: str):
@@ -75,12 +67,18 @@ async def display_exam(request: DisplayExamRequest):
     cache_key = f"{request.course_id}:{request.instructor_id}:{request.paper_type}"
     
     try:
-        # Generates AI JSON based on the raw content
-        data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
+        # Optimization: Use pre-stored blueprint if available
+        if past_paper.get("blueprint"):
+            print(f"DEBUG: Using pre-stored blueprint for {request.course_id}")
+            data = await exam_generator.generate_from_blueprint(past_paper["blueprint"])
+        else:
+            # Fallback for legacy papers without a blueprint column/value
+            print(f"DEBUG: Fallback to full extraction for {request.course_id}")
+            data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
         return data
     except Exception as e:
         print("Failed to generate/parse JSON:", e)
-        raise HTTPException(status_code=500, detail="AI generation failed to produce valid JSON.")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
     
 @router.get("/book-patterns/{topic}")
 async def get_book_patterns(

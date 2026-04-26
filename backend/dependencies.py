@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from services.paper_parser import QuestionExctractor
+from services.paper_parser import QuestionExtractor
 from services.textbook_parser import TextbookIngestor
 from services.question_recommender import QuestionRecommender
 from services.exam_generator import ExamGeneratorService
@@ -59,7 +59,7 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
 # Initialize the new services once
-extractor = QuestionExctractor(api_key=OPENAI_KEY, model_name=MODEL_NAME)
+extractor = QuestionExtractor(api_key=OPENAI_KEY, model_name=MODEL_NAME)
 parser = TextbookIngestor() 
 recommender = QuestionRecommender(api_key=OPENAI_KEY, model_name=MODEL_NAME)
 exam_generator = ExamGeneratorService(api_key=OPENAI_KEY, model_name=MODEL_NAME)

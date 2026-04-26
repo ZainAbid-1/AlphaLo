@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 import os
 
-from dependencies import get_textbook_parser, get_question_extractor, get_admin_user
+from dependencies import get_textbook_parser, get_question_extractor, get_admin_user, get_exam_generator
 from services.textbook_parser import TextbookIngestor
 from services.supabase_client import supabase  # <-- Supabase client
 
@@ -63,20 +63,24 @@ def process_textbook_task(temp_file_path: str, course_id: str, title: str, instr
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, extractor, paper_type: str):
-    """Heavy AI lifting: Parses past paper in background."""
+async def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, extractor, paper_type: str, exam_generator):
+    """Heavy AI lifting: Parses past paper and extracts blueprint in background."""
     try:
         exam_text = extractor.exam_parser(temp_file_path)
         
-        # Save raw paper to Supabase 'past_papers'
+        # New: Extract blueprint on admin side to save time for students
+        blueprint = await exam_generator.extract_blueprint(exam_text)
+        
+        # Save raw paper and structural blueprint to Supabase 'past_papers'
         supabase.table("past_papers").insert({
             "course_id": course_id, 
             "instructor_id": instructor_id, 
             "paper_title": title, 
             "raw_content": exam_text,
+            "blueprint": blueprint, # JSON structure
             "paper_type": paper_type
         }).execute()
-        print(f"✅ BACKGROUND SUCCESS: Past Paper '{title}' ({paper_type}) processed and saved.")
+        print(f"✅ BACKGROUND SUCCESS: Past Paper '{title}' ({paper_type}) processed with blueprint.")
     except Exception as e:
         print(f"❌ BACKGROUND ERROR: Failed to process past paper '{title}': {str(e)}")
     finally:
@@ -112,7 +116,8 @@ async def upload_past_paper(course_id: str, title: str, instructor_id: str,
                             paper_type: str,
                             background_tasks: BackgroundTasks,
                             file: UploadFile = File(...), 
-                            extractor=Depends(get_question_extractor)):
+                            extractor=Depends(get_question_extractor),
+                            exam_generator=Depends(get_exam_generator)):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
 
@@ -124,7 +129,7 @@ async def upload_past_paper(course_id: str, title: str, instructor_id: str,
         buffer.write(file_bytes)
         
     # Offload processing to background
-    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, extractor, paper_type)
+    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, extractor, paper_type, exam_generator)
 
     return {
         "status": "Accepted", 
