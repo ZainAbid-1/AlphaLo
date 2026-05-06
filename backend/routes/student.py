@@ -1,9 +1,8 @@
-# backend/routes/student.py
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from dependencies import get_exam_generator
-from services.supabase_client import supabase  # <-- Supabase client
 from dependencies import get_question_recommender, get_question_extractor
+from services.mongo_client import db
 
 router = APIRouter()
 
@@ -15,56 +14,33 @@ class DisplayExamRequest(BaseModel):
 
 @router.post("/displayexam")
 async def display_exam(request: DisplayExamRequest):
-    res = supabase.table("past_papers").select("*") \
-        .eq("course_id", request.course_id) \
-        .eq("instructor_id", request.instructor_id) \
-        .eq("paper_type", request.paper_type).execute()
+    # 1. Fetch blueprint from MongoDB
+    past_paper = await db.past_papers.find_one({
+        "course_id": request.course_id,
+        "instructor_id": request.instructor_id,
+        "paper_type": request.paper_type
+    })
         
-    if not res.data:
-        raise HTTPException(status_code=404, detail="Past paper not found for this course and instructor.")
+    if not past_paper:
+        raise HTTPException(status_code=404, detail="Paper not found in MongoDB.")
     
-    past_paper = res.data[0] 
+    # 2. Trigger AI Generation
     exam_generator = get_exam_generator()
-    
-    # Build a unique cache key so the blueprint is reused across generations
     cache_key = f"{request.course_id}:{request.instructor_id}:{request.paper_type}"
-    
-    try:
-        # Optimization: Use pre-stored blueprint if available
-        if past_paper.get("blueprint"):
-            print(f"DEBUG: Using pre-stored blueprint for {request.course_id}")
-            data = await exam_generator.generate_from_blueprint(past_paper["blueprint"])
-        else:
-            # Fallback for legacy papers without a blueprint column/value
-            print(f"DEBUG: Fallback to full extraction for {request.course_id}")
-            data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
-        return data
-    except Exception as e:
-        print("Failed to generate/parse JSON:", e)
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
-    
-@router.get("/book-patterns/{course_id}/{topic_name}")
-async def get_book_patterns(
-    course_id: str, 
-    topic_name: str, 
-    extractor = Depends(get_question_extractor),
-    recommender = Depends(get_question_recommender)
-):
-    # 1. FETCH the Instructor's Past Paper text from Supabase
-    res = supabase.table("past_papers").select("raw_content") \
-        .eq("course_id", course_id).execute()
-    
-    if not res.data:
-        # FALLBACK: If no paper is uploaded, just search the topic name
-        patterns_to_search = [topic_name]
-    else:
-        # 2. AI EXTRACTION: Find instructor-specific questions about this topic
-        full_paper_text = res.data[0]["raw_content"]
-        
-        # We use Gemini to pull only the 'Introduction' questions from the messy paper
-        patterns_to_search = extractor.get_questions(full_paper_text, topic_name)
+    data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
+    return data
 
-    # 3. SEARCH THE BOOK: Use those specific instructor questions to find book matches
-    recommendations = recommender.get_book_recommendations(patterns_to_search)
+@router.get("/book-patterns/{course_id}/{topic_name}")
+async def get_book_patterns(course_id: str, topic_name: str, extractor = Depends(get_question_extractor), recommender = Depends(get_question_recommender)):
+    # 1. Fetch blueprint from MongoDB
+    paper = await db.past_papers.find_one({"course_id": course_id})
     
+    if not paper:
+        search_queries = [topic_name]
+    else:
+        # 2. Extract specific topic questions
+        search_queries = extractor.get_specific_topic_questions(paper["raw_content"], topic_name)
+
+    # 3. Match to Pinecone
+    recommendations = recommender.get_book_recommendations(search_queries)
     return recommendations

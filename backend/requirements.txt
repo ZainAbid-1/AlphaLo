@@ -18,3 +18,5 @@ supabase
 langchain-openai
 openai
 langchain-classic
+motor
+dnspython

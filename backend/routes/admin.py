@@ -1,105 +1,113 @@
-# backend/routes/admin.py
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 import os
-
-from dependencies import get_textbook_parser, get_question_extractor, get_exam_generator
+from datetime import datetime
+from services.mongo_client import db
 from services.textbook_parser import TextbookIngestor
-from services.supabase_client import supabase  # <-- Supabase client
+from dependencies import get_textbook_parser, get_question_extractor, get_admin_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_admin_user)])
 
-# --- BACKGROUND TASK FUNCTIONS ---
+# --- BACKGROUND TASK FUNCTIONS (The heavy lifting) ---
 
-def process_textbook_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, parser: TextbookIngestor):
-    """Heavy AI lifting: Parses, chunks, and vectorizes textbook in background."""
+async def process_textbook_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, parser: TextbookIngestor):
+    """Parses, chunks, and vectorizes textbook, then saves metadata to MongoDB."""
     try:
+        # 1. AI Logic: PDF -> Text -> Chunks -> Pinecone
         data = parser.pdf_parser(temp_file_path)
         chunks = parser.data_chunking(data)
-        parser.vectorization(chunks) # Pushes to Pinecone
+        parser.vectorization(chunks) 
         
-        # Save reference to Supabase 'textbooks'
-        supabase.table("textbooks").insert({
-            "course_id": course_id, 
-            "instructor_id": instructor_id, 
-            "title": title, 
-            "file_path": temp_file_path # You might want to upload to S3/Supabase Storage later
-        }).execute()
-        print(f"✅ BACKGROUND SUCCESS: Textbook '{title}' processed and saved.")
+        # 2. Database Logic: Save record to MongoDB
+        await db.textbooks.insert_one({
+            "course_id": course_id,
+            "instructor_id": instructor_id,
+            "title": title,
+            "chunks_count": len(chunks),
+            "processed_at": datetime.utcnow()
+        })
+        print(f"SUCCESS: Textbook '{title}' indexed in Pinecone and recorded in MongoDB.")
     except Exception as e:
-        print(f"❌ BACKGROUND ERROR: Failed to process textbook '{title}': {str(e)}")
+        print(f"ERROR: Failed to process textbook '{title}': {str(e)}")
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-async def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, extractor, paper_type: str, exam_generator):
-    """Heavy AI lifting: Parses past paper and extracts blueprint in background."""
+async def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, paper_type: str, extractor):
+    """Parses past paper into a string blueprint and saves to MongoDB."""
     try:
+        # 1. AI Logic: Extract full text from PDF
         exam_text = extractor.exam_parser(temp_file_path)
         
-        # New: Extract blueprint on admin side to save time for students
-        blueprint = await exam_generator.extract_blueprint(exam_text)
-        
-        # Save raw paper and structural blueprint to Supabase 'past_papers'
-        supabase.table("past_papers").insert({
-            "course_id": course_id, 
-            "instructor_id": instructor_id, 
-            "paper_title": title, 
+        # 2. Database Logic: Save the blueprint to MongoDB
+        await db.past_papers.insert_one({
+            "course_id": course_id,
+            "instructor_id": instructor_id,
+            "paper_title": title,
             "raw_content": exam_text,
-            "blueprint": blueprint, # JSON structure
-            "paper_type": paper_type
-        }).execute()
-        print(f"✅ BACKGROUND SUCCESS: Past Paper '{title}' ({paper_type}) processed with blueprint.")
+            "paper_type": paper_type,
+            "created_at": datetime.utcnow()
+        })
+        print(f"SUCCESS: Past Paper '{title}' saved as AI Blueprint in MongoDB.")
     except Exception as e:
-        print(f"❌ BACKGROUND ERROR: Failed to process past paper '{title}': {str(e)}")
+        print(f"ERROR: Failed to process past paper '{title}': {str(e)}")
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
+
+# --- API ENDPOINTS ---
+
 @router.post("/upload-textbook/{course_id}")
-async def upload_textbook(course_id: str, title: str, instructor_id: str, 
-                          background_tasks: BackgroundTasks,
-                          file: UploadFile = File(...), 
-                          parser: TextbookIngestor = Depends(get_textbook_parser)):
-
+async def upload_textbook(
+    course_id: str, 
+    title: str, 
+    instructor_id: str, 
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...), 
+    parser: TextbookIngestor = Depends(get_textbook_parser)
+):
     if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    file_bytes = await file.read()
-    temp_file_path = f"backend/temp_uploads/{file.filename}"
-    os.makedirs("backend/temp_uploads", exist_ok=True) 
-        
-    with open(temp_file_path, "wb") as buffer: 
-        buffer.write(file_bytes)
+    # Save the file temporarily for the parser to read
+    os.makedirs("temp_uploads", exist_ok=True)
+    temp_file_path = f"temp_uploads/{file.filename}"
+    
+    with open(temp_file_path, "wb") as buffer:
+        buffer.write(await file.read())
 
-    # Offload processing to background
+    # Hand off the heavy work to a background thread
     background_tasks.add_task(process_textbook_task, temp_file_path, course_id, title, instructor_id, parser)
     
     return {
         "status": "Accepted", 
-        "message": f"Textbook '{title}' upload received. Processing in the background. Check logs for completion."
+        "message": f"Textbook '{title}' upload received. AI processing started in the background."
     }
 
 @router.post("/upload-past-paper/{course_id}")
-async def upload_past_paper(course_id: str, title: str, instructor_id: str, 
-                            paper_type: str,
-                            background_tasks: BackgroundTasks,
-                            file: UploadFile = File(...), 
-                            extractor=Depends(get_question_extractor),
-                            exam_generator=Depends(get_exam_generator)):
+async def upload_past_paper(
+    course_id: str, 
+    title: str, 
+    instructor_id: str, 
+    paper_type: str,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...), 
+    extractor = Depends(get_question_extractor)
+):
     if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDFs are supported right now.")
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    file_bytes = await file.read()
-    temp_file_path = f"backend/temp_uploads/{file.filename}"
-    os.makedirs("backend/temp_uploads", exist_ok=True)
-        
-    with open(temp_file_path, "wb") as buffer: 
-        buffer.write(file_bytes)
-        
-    # Offload processing to background
-    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, extractor, paper_type, exam_generator)
+    # Save the file temporarily
+    os.makedirs("temp_uploads", exist_ok=True)
+    temp_file_path = f"temp_uploads/{file.filename}"
+    
+    with open(temp_file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    # Hand off the heavy work to a background thread
+    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, paper_type, extractor)
 
     return {
         "status": "Accepted", 
-        "message": f"Past paper '{title}' ({paper_type}) upload received. Extracting blueprint in the background."
+        "message": f"Past paper '{title}' upload received. Extraction started in the background."
     }
