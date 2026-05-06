@@ -194,10 +194,17 @@ export default function MockExam() {
         <div className="flex-1 flex flex-col items-center overflow-y-auto custom-scrollbar pb-12">
           <div className="w-full max-w-4xl flex flex-col gap-8 px-4">
             {topicQuestions.map((q, index) => (
-              <div 
-                key={index}
-                className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl transition-all hover:border-white/30"
-              >
+              <div key={index} className="w-full">
+                {q.section_title && (
+                  <div className="mb-12 mt-8 flex items-center gap-6">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                    <h2 className="text-2xl font-black text-white/40 tracking-[0.3em] uppercase whitespace-nowrap">{q.section_title}</h2>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                  </div>
+                )}
+                <div 
+                  className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl transition-all hover:border-white/30 mb-8"
+                >
                 {/* Header Badge */}
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
@@ -266,10 +273,13 @@ export default function MockExam() {
 
                 {/* Sub-questions Rendering */}
                 {q.sub_questions && q.sub_questions.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-10">
+                  <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-12">
                     {q.sub_questions.map((sq: any, sqIndex: number) => (
-                      <div key={sqIndex} className="pl-4 border-l-2 border-white/10 space-y-4">
-                        <div className="text-gray-200 text-lg font-medium">
+                      <div key={sqIndex} className="relative pl-8 border-l-2 border-[#7C3AED]/30 space-y-6 group">
+                        {/* Sub-question Numbering Marker */}
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#1A2B48] border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
+                        
+                        <div className="text-gray-200 text-lg font-medium leading-relaxed">
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             components={{
@@ -316,17 +326,18 @@ export default function MockExam() {
                             {sq.text}
                           </ReactMarkdown>
                         </div>
+
                         {sq.options && sq.options.length > 0 && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 max-w-4xl mt-6">
                             {sq.options.map((option: string, optIndex: number) => (
                               <div
                                 key={optIndex}
-                                className="p-4 rounded-xl border border-white/5 bg-white/5 text-gray-300 flex items-center gap-3 transition-colors hover:bg-white/10"
+                                className="group/option flex items-start gap-3 py-2 px-4 rounded-xl transition-all hover:bg-white/5 cursor-pointer"
                               >
-                                <div className="w-6 h-6 rounded-md bg-white/10 text-white/50 flex items-center justify-center font-bold text-[10px] shrink-0 uppercase">
-                                  {String.fromCharCode(97 + optIndex)}
+                                <div className="text-[#7C3AED] font-bold text-base shrink-0 group-hover/option:scale-110 transition-transform">
+                                  ({String.fromCharCode(97 + optIndex)})
                                 </div>
-                                <span className="text-sm">{option}</span>
+                                <span className="text-gray-300 text-base leading-relaxed">{option}</span>
                               </div>
                             ))}
                           </div>
@@ -338,22 +349,23 @@ export default function MockExam() {
 
                 {/* Standard Options (if no sub-questions) */}
                 {(!q.sub_questions || q.sub_questions.length === 0) && q.options && q.options.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 max-w-4xl mt-8">
                     {q.options.map((option: string, optIndex: number) => (
                       <div
                         key={optIndex}
-                        className="p-5 rounded-2xl border border-white/10 bg-white/5 text-gray-300 flex items-center gap-4 transition-all hover:bg-white/10 hover:translate-x-1"
+                        className="group/option flex items-start gap-4 py-3 px-6 rounded-2xl transition-all hover:bg-white/5 cursor-pointer"
                       >
-                        <div className="w-8 h-8 rounded-full bg-[#7C3AED]/20 text-[#7C3AED] flex items-center justify-center font-black text-xs shrink-0">
-                          {String.fromCharCode(65 + optIndex)}
+                        <div className="text-[#7C3AED] font-black text-lg shrink-0 group-hover/option:scale-110 transition-transform">
+                          ({String.fromCharCode(97 + optIndex)})
                         </div>
-                        <span className="text-base">{option}</span>
+                        <span className="text-gray-200 text-lg leading-relaxed">{option}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            ))}
+            </div>
+          ))}
           </div>
         </div>
       </div>

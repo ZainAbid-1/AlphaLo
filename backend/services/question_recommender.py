@@ -2,17 +2,29 @@ from langchain_classic.chains import RetrievalQA
 from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
+import os
 
 class QuestionRecommender:
-    def __init__(self, api_key: str, model_name: str):   
+    def __init__(self, llm=None, api_key: str = None, model_name: str = None):   
         # Setup the models
         self.embedding_model = HuggingFaceEmbeddings(
             model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
         )
-        self.llm = ChatOpenAI(
-            model=model_name,
-            openai_api_key=api_key,
-        )
+        if llm:
+            self.llm = llm
+        else:
+            provider = os.getenv("AI_PROVIDER", "openai").lower()
+            if provider == "groq":
+                self.llm = ChatGroq(
+                    model=model_name or os.getenv("GROQ_MODEL_NAME"),
+                    groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
+                )
+            else:
+                self.llm = ChatOpenAI(
+                    model=model_name or os.getenv("OPENAI_MODEL_NAME"),
+                    openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                )
 
     def get_book_recommendations(self, exam_questions):
         # Connect to index

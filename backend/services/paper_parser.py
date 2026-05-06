@@ -1,15 +1,28 @@
 import json
 import pdfplumber
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
+import os
 import logging
 
 class QuestionExtractor:
-    def __init__(self, api_key: str, model_name: str):
-        self.llm = ChatOpenAI(
-            model=model_name,
-            openai_api_key=api_key,
-            temperature=0.1
-        )
+    def __init__(self, llm=None, api_key: str = None, model_name: str = None):
+        if llm:
+            self.llm = llm
+        else:
+            provider = os.getenv("AI_PROVIDER", "openai").lower()
+            if provider == "groq":
+                self.llm = ChatGroq(
+                    model=model_name or os.getenv("GROQ_MODEL_NAME"),
+                    groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
+                    temperature=0.1
+                )
+            else:
+                self.llm = ChatOpenAI(
+                    model=model_name or os.getenv("OPENAI_MODEL_NAME"),
+                    openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                    temperature=0.1
+                )
 
     def _clean_json(self, raw_output):
         """Robustly extract a JSON array from LLM output using bracket matching."""
@@ -49,21 +62,24 @@ class QuestionExtractor:
 
         TASK:
         1. Scan the exam text for questions that specifically target "{topic_name}" or its core sub-concepts.
-        2. SEPARATION RULE: Every single question MUST be a separate item in the list.
-        3. TRUE/FALSE RULE: Each T/F statement MUST be its own separate object.
-        4. CODE RULE: If a question contains ANY code (even single lines like 'class Parent {{ ... }}'), you MUST wrap it in triple backticks. This is required for our UI to render it in a special Mac terminal box.
-        5. OPTIONS: List multiple choice options in the "options" array.
-        6. REPRODUCTION: Reproduce the question FULLY and ACCURATELY.
+        2. SEPARATION RULE: Every distinct question (including all its options) MUST be a single item in the list.
+        3. MCQ GROUPING: For Multiple Choice Questions, extract all options into the "options" array. 
+           * CRITICAL: Do NOT create separate objects for each option.
+           * CRITICAL: Do NOT include options like "a. True" inside the "text" field.
+        4. TRUE/FALSE GROUPING: Treat each True/False statement as a single question with ["True", "False"] in the "options" array.
+        5. CODE RULE: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', '{{}}', or any programming syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java).
+        6. PRETTY PRINT CODE: If the source code is on a single line, reformat it with proper indentation and newlines for readability.
+        7. REPRODUCTION: Reproduce the question text ACCURATELY.
         
         EXAMPLE OUTPUT:
         [
           {{
-            "text": "Predict the output of the following code:\\n\\n```java\\nclass A {{ ... }}\\n```", 
-            "options": []
-          }},
-          {{
             "text": "1.1 Inheritance allows a subclass to inherit features from a superclass.", 
             "options": ["True", "False"]
+          }},
+          {{
+            "text": "Which keyword is used to inherit a class in Java?", 
+            "options": ["implements", "extends", "inherits", "using"]
           }}
         ]
 
