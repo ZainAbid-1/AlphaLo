@@ -2,17 +2,31 @@ import json
 import re
 import asyncio
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
+import os
 
 class ExamGeneratorService:
-    def __init__(self, api_key: str, model_name: str):
-        # We use a lower temperature for structural extraction to be more precise
-        self.llm = ChatOpenAI(
-            model=model_name,
-            openai_api_key=api_key,
-            temperature=0.3,
-            timeout=120,
-            max_tokens=16384
-        )
+    def __init__(self, llm=None, api_key: str = None, model_name: str = None):
+        if llm:
+            self.llm = llm
+        else:
+            # Fallback for backward compatibility if llm is not provided
+            provider = os.getenv("AI_PROVIDER", "openai").lower()
+            if provider == "groq":
+                self.llm = ChatGroq(
+                    model=model_name or os.getenv("GROQ_MODEL_NAME"),
+                    groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
+                    temperature=0.3,
+                    timeout=120
+                )
+            else:
+                self.llm = ChatOpenAI(
+                    model=model_name or os.getenv("OPENAI_MODEL_NAME"),
+                    openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                    temperature=0.3,
+                    timeout=120,
+                    max_tokens=16384
+                )
 
     def _clean_json(self, raw_output):
         """Robustly extract a JSON array from LLM output using bracket matching."""
@@ -51,11 +65,13 @@ STRUCTURE RULES:
 - DO NOT change the parent "text" field (the general instruction) — keep it IDENTICAL.
 - DO NOT add or remove sub_questions. Keep the EXACT same count.
 - If a question or sub-question has "options", keep the SAME NUMBER of options but modify their values.
+- PRESERVE the "type" and "section_title" fields exactly as they are in the input.
 
 MUTATION RULES (IMPORTANT):
 - For TABLES: Mutate ALL numerical values and categories in the table while keeping the structure.
 - For PROBABILITY/MATH: Change the specific numbers and scenarios.
 - For CODING: Change variable names and logic.
+- For MCQs: Ensure that the "options" are mutated but remain as valid alternatives to the question.
 
 JSON FORMATTING:
 - Return ONLY a valid JSON list. No markdown fences.
@@ -72,18 +88,24 @@ INPUT ({len(blueprint)} questions):
         return f"""Parse this university past paper into a structured JSON list. 
 
 STRUCTURE RULES:
-- MAIN QUESTIONS: Every distinct problem block MUST be a top-level object. If a question is clearly labeled (e.g., Q1, Q2, Question 3), use that as the boundary.
-- SUB-QUESTIONS: Every sub-part (e.g., (i), (ii), (iii), a, b, c) MUST be a separate object in the "sub_questions" array. 
-- NO MERGING: Do not merge multiple sub-parts into one text field. Each part is a distinct task for the student.
-- TRUE/FALSE: Every T/F statement MUST be its own sub_question.
-- PARENT CONTEXT: If multiple sub-questions share a table or scenario, put that table/scenario in the parent "text" field so it's visible for all parts.
+- MAIN QUESTIONS: Every distinct problem block MUST be a top-level object.
+- SUB-QUESTIONS: Every sub-part (e.g., (i), (ii), (iii), 2.1, 2.2) MUST be in the "sub_questions" array.
+- SUB-QUESTION CONTENT: Each sub-question object MUST contain the COMPLETE text and all CODE snippets associated with that sub-part. NEVER return just the numbering (e.g., "2.1").
+- MCQ OPTIONS vs SUB-QUESTIONS: Do NOT confuse MCQ options (a, b, c, d) with sub-questions. 
+  * CORRECT: One question object with {{"text": "Which is true?", "options": ["Option A", "Option B"]}}.
+  * INCORRECT: Two separate question objects for each option.
+- TRUE/FALSE: Treat True/False statements as MCQs with "options": ["True", "False"]. NEVER split a single T/F statement into two objects.
+- TYPE DETECTION: For each question and sub-question, identify its "type": "multiple-choice", "short-answer", "coding", or "essay".
+- OPTIONS: If a question is multiple-choice, you MUST extract the options into the "options" array. DO NOT leave options inside the "text" field.
+- SECTION TITLES: If the paper has sections (e.g., "SECTION A: MCQs", "PART B"), include a "section_title" field for the FIRST question of that section. Leave it null for others.
 
 CRITICAL RULES:
-- DO NOT SKIP ANY PART: If the paper has 5 sub-parts (i to v), the "sub_questions" array MUST have length 5.
-- DETECT ALL QUESTIONS: Scan the ENTIRE document from start to finish. Some questions might not be explicitly labeled "Question X" but are clearly new problems. If you see a major new topic or a large gap, treat it as a new main question.
-- CAPTURE THE END: Pay special attention to the end of the document. Do not truncate your analysis before the very last line of text.
-- KEEP TABLES & CODE: Reconstruct tables as Markdown and code as markdown blocks.
-- OMIT ONLY: Page numbers, "Total Marks", and university headers.
+- NO FRAGMENTATION: If a question has parts a, b, c that are options, they MUST be in the "options" array of a SINGLE object.
+- CODE DETECTION: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', '{{}}', or any programming syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java).
+- PRETTY PRINT CODE: If the source code is on a single line, reformat it with proper indentation and newlines for readability.
+- DO NOT REPEAT: Do not repeat the main question text for every option.
+- DO NOT SKIP: Scan the ENTIRE document.
+- KEEP TABLES: Reconstruct tables as Markdown.
 
 JSON FORMATTING:
 - Return ONLY a valid JSON list.
@@ -93,19 +115,26 @@ JSON FORMATTING:
 EXAMPLE OUTPUT STRUCTURE:
 [
   {{
-    "text": "Predict the output of the following code snippets. Consider all edge cases.",
+    "section_title": "SECTION A: MULTIPLE CHOICE QUESTIONS",
+    "text": "1. What is the complexity of binary search?",
+    "type": "multiple-choice",
+    "options": ["O(n)", "O(log n)", "O(1)", "O(n log n)"],
+    "sub_questions": []
+  }},
+  {{
+    "text": "2. State whether True or False:",
+    "type": "multiple-choice",
     "options": [],
     "sub_questions": [
-      {{"text": "2.1\\n\\n```java\\npublic class Main {{ ... }}\\n```", "options": []}}
+      {{"text": "Java is platform independent.", "type": "multiple-choice", "options": ["True", "False"]}}
     ]
   }},
   {{
-    "text": "State whether the following are True or False:",
+    "section_title": "SECTION B: DESCRIPTIVE",
+    "text": "3. Explain Polymorphism with a code example.",
+    "type": "coding",
     "options": [],
-    "sub_questions": [
-      {{"text": "Probability of an impossible event is 1.", "options": ["True", "False"]}},
-      {{"text": "The sum of probabilities is always 1.", "options": ["True", "False"]}}
-    ]
+    "sub_questions": []
   }}
 ]
 
@@ -127,10 +156,15 @@ Past Paper Text:
 
         # Post-processing to ensure field consistency
         for q in data:
-            q['type'] = 'multiple-choice' if (q.get('options') and len(q['options']) > 0) or q.get('sub_questions') else 'short-answer'
+            # Fallback type detection if LLM missed it
+            if 'type' not in q or not q['type']:
+                q['type'] = 'multiple-choice' if (q.get('options') and len(q['options']) > 0) else 'short-answer'
+            
             if 'options' not in q: q['options'] = []
             if 'sub_questions' in q:
                 for sq in q['sub_questions']:
+                    if 'type' not in sq or not sq['type']:
+                        sq['type'] = 'multiple-choice' if (sq.get('options') and len(sq['options']) > 0) else 'short-answer'
                     if 'options' not in sq: sq['options'] = []
                     
         return data

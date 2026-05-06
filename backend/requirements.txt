@@ -15,6 +15,7 @@ langchain-pinecone
 langchain-google-genai
 pypdf
 supabase
+langchain-groq
 langchain-openai
 openai
 langchain-classic

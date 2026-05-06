@@ -42,11 +42,12 @@ export interface Question {
   topic_id?: string;
   topicId?: string;
   text: string;
-  type: 'multiple-choice' | 'short-answer' | 'essay';
+  type: 'multiple-choice' | 'short-answer' | 'essay' | 'coding';
   difficulty: 'easy' | 'medium' | 'hard';
   options?: string[];
   correctAnswer?: number | string;
   hint?: string;
+  section_title?: string | null;
 }
 
 // --- SELECTION DATA ---
