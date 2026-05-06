@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const supabase = require('../supabase');
+const { getDb } = require('../mongodb');
 
 // 1. GET Universities
 router.get('/universities', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('universities').select('*');
-        if (error) throw error;
+        const db = await getDb();
+        const data = await db.collection('universities').find({}).toArray();
         
         const formattedData = data.map(u => ({
             id: u.id,
@@ -24,8 +24,8 @@ router.get('/universities', async (req, res) => {
 router.get('/courses/:university_id', async (req, res) => {
     try {
         const { university_id } = req.params;
-        const { data, error } = await supabase.from('courses').select('*').eq('university_id', university_id);
-        if (error) throw error;
+        const db = await getDb();
+        const data = await db.collection('courses').find({ university_id }).toArray();
 
         const formattedData = data.map(c => ({
             id: c.id,
@@ -43,8 +43,8 @@ router.get('/courses/:university_id', async (req, res) => {
 router.get('/instructors/:course_id', async (req, res) => {
     try {
         const { course_id } = req.params;
-        const { data, error } = await supabase.from('instructors').select('*').eq('course_id', course_id);
-        if (error) throw error;
+        const db = await getDb();
+        const data = await db.collection('instructors').find({ course_id }).toArray();
 
         const formattedData = data.map(i => ({
             id: i.id,
@@ -63,8 +63,8 @@ router.get('/instructors/:course_id', async (req, res) => {
 router.get('/roadmap/:course_id', async (req, res) => {
     try {
         const { course_id } = req.params;
-        const { data, error } = await supabase.from('syllabus_topics').select('*').eq('course_id', course_id);
-        if (error) throw error;
+        const db = await getDb();
+        const data = await db.collection('syllabus_topics').find({ course_id }).toArray();
 
         const formattedData = data.map(t => ({
             id: t.id,
@@ -86,8 +86,8 @@ router.get('/roadmap/:course_id', async (req, res) => {
 router.get('/correlation/:topic_id', async (req, res) => {
     try {
         const { topic_id } = req.params;
-        const { data, error } = await supabase.from('exam_patterns').select('*').eq('topic_id', topic_id);
-        if (error) throw error;
+        const db = await getDb();
+        const data = await db.collection('exam_patterns').find({ topic_id }).toArray();
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -99,49 +99,16 @@ router.post('/displayexam', async (req, res) => {
     const { course_id, instructor_id, generation_count, paper_type } = req.body;
     
     try {
-        // Fetch past paper from Supabase
-        const { data: papers, error } = await supabase.from('past_papers')
-            .select('*')
-            .eq('course_id', course_id)
-            .eq('instructor_id', instructor_id)
-            .eq('paper_type', paper_type);
-
-        if (error) throw error;
-        if (!papers || papers.length === 0) {
-            return res.status(404).json({ error: 'Past paper not found for this course and instructor.' });
-        }
-
-        const past_paper = papers[0];
         const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
-
-        // Forward request to FastAPI Service
-        // We can either call a generic "generate" endpoint or specific ones if we restructure FastAPI
-        // For now, let's assume we call a proxy endpoint on FastAPI that handles the logic
-        // OR we just send the raw data to FastAPI and let it handle the AI logic.
         
-        const payload = {
-            course_id,
-            instructor_id,
-            generation_count,
-            paper_type,
-            // We pass the blueprint if available to save the Python service a DB call
-            blueprint: past_paper.blueprint,
-            raw_content: past_paper.raw_content
-        };
-
-        // Assuming we add a /generate-proxy endpoint to FastAPI or use existing ones
-        // Actually, the original Python code was:
-        // if past_paper.get("blueprint"): data = await exam_generator.generate_from_blueprint(past_paper["blueprint"])
-        // else: data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
-        
-        // Let's call the Python service. We'll need to make sure FastAPI has an endpoint that accepts these.
+        // Forward request to FastAPI Service (which handles MongoDB internally)
         const response = await axios.post(`${pythonServiceUrl}/api/student/displayexam`, req.body);
         
         res.json(response.data);
     } catch (error) {
         console.error('Express Error calling Python service:', error.message);
         const status = error.response ? error.response.status : 500;
-        const message = error.response ? error.response.data.detail : error.message;
+        const message = error.response ? (error.response.data.detail || error.response.data.error) : error.message;
         res.status(status).json({ error: `AI generation failed: ${message}` });
     }
 });

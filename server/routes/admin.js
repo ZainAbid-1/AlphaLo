@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../supabase');
+const { getDb } = require('../mongodb');
 const axios = require('axios');
 const multer = require('multer');
 const FormData = require('form-data');
@@ -15,10 +15,10 @@ router.use(isAdmin);
 
 // 1. POST University
 router.post('/university', async (req, res) => {
-    const { id, name } = req.query; // Following the Python API pattern
+    const { id, name } = req.query;
     try {
-        const { error } = await supabase.from('universities').insert({ id, name });
-        if (error) throw error;
+        const db = await getDb();
+        await db.collection('universities').insertOne({ id, name });
         res.json({ status: 'University added' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -29,8 +29,8 @@ router.post('/university', async (req, res) => {
 router.post('/course', async (req, res) => {
     const { id, university_id, name } = req.query;
     try {
-        const { error } = await supabase.from('courses').insert({ id, university_id, name });
-        if (error) throw error;
+        const db = await getDb();
+        await db.collection('courses').insertOne({ id, university_id, name });
         res.json({ status: 'Course added' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -41,13 +41,13 @@ router.post('/course', async (req, res) => {
 router.post('/topic', async (req, res) => {
     const { course_id, id, week, topic } = req.query;
     try {
-        const { error } = await supabase.from('syllabus_topics').insert({
+        const db = await getDb();
+        await db.collection('syllabus_topics').insertOne({
             id,
             course_id,
             week_number: parseInt(week),
             topic
         });
-        if (error) throw error;
         res.json({ status: 'Topic added' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -58,14 +58,14 @@ router.post('/topic', async (req, res) => {
 router.post('/instructor', async (req, res) => {
     const { id, course_id, name, title, avatar } = req.query;
     try {
-        const { error } = await supabase.from('instructors').insert({
+        const db = await getDb();
+        await db.collection('instructors').insertOne({
             id,
             course_id,
             name,
             title,
             avatar
         });
-        if (error) throw error;
         res.json({ status: 'Instructor added' });
     } catch (error) {
         res.status(500).json({ error: error.message });
