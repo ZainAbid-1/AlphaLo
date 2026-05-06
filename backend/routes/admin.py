@@ -2,43 +2,11 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 import os
 
-from dependencies import get_textbook_parser, get_question_extractor, get_admin_user, get_exam_generator
+from dependencies import get_textbook_parser, get_question_extractor, get_exam_generator
 from services.textbook_parser import TextbookIngestor
 from services.supabase_client import supabase  # <-- Supabase client
 
-router = APIRouter(dependencies=[Depends(get_admin_user)])
-
-@router.post("/university")
-def add_university(id: str, name: str):
-    supabase.table("universities").insert({"id": id, "name": name}).execute()
-    return {"status": "University added"}
-
-@router.post("/course")
-def add_course(id: str, university_id: str, name: str):
-    supabase.table("courses").insert({"id": id, "university_id": university_id, "name": name}).execute()
-    return {"status": "Course added"}
-
-@router.post("/topic")
-def add_topic(course_id: str, id: str, week: int, topic: str):
-    # Matches 'syllabus_topics' table
-    supabase.table("syllabus_topics").insert({
-        "id": id, 
-        "course_id": course_id, 
-        "week_number": week, 
-        "topic": topic
-    }).execute()
-    return {"status": "Topic added"}
-
-@router.post("/instructor")
-def add_instructor(id: str, course_id: str, name: str, title: str, avatar: str):
-    supabase.table("instructors").insert({
-        "id": id, 
-        "course_id": course_id, 
-        "name": name, 
-        "title": title, 
-        "avatar": avatar
-    }).execute()
-    return {"status": "Instructor added"}
+router = APIRouter()
 
 # --- BACKGROUND TASK FUNCTIONS ---
 

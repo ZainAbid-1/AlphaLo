@@ -13,43 +13,6 @@ class DisplayExamRequest(BaseModel):
     generation_count: int
     paper_type: str
 
-@router.get("/universities")
-def get_universities():
-    res = supabase.table("universities").select("*").execute()
-    return [{"id": u["id"], "name": u["name"], "logo": u["name"][0] if u["name"] else "U"} for u in res.data]
-
-@router.get("/courses/{university_id}")
-def get_courses(university_id: str):
-    res = supabase.table("courses").select("*").eq("university_id", university_id).execute()
-    return [{"id": c["id"], "universityId": c["university_id"], "code": c["id"].split("-")[1].upper() if "-" in c["id"] else "CS", "name": c["name"]} for c in res.data]
-
-@router.get("/instructors/{course_id}")
-def get_instructors(course_id: str):
-    res = supabase.table("instructors").select("*").eq("course_id", course_id).execute()
-    return [{"id": i["id"], "courseId": i["course_id"], "name": i["name"], "title": i["title"], "avatar": i["avatar"]} for i in res.data]
-
-@router.get("/roadmap/{course_id}")
-def get_roadmap(course_id: str):
-    res = supabase.table("syllabus_topics").select("*").eq("course_id", course_id).execute()
-    
-    # Map database columns back to what the React frontend expects
-    return [{
-        "id": t["id"],
-        "course_id": t["course_id"],
-        "week_number": t["week_number"],
-        "phase": f"Week {t['week_number']}",       # Frontend uses 'phase'
-        "topic": t["topic"],
-        "aiPattern": t["ai_pattern_summary"],      # Frontend expects 'aiPattern' 
-        "ai_pattern_summary": t["ai_pattern_summary"],
-        "complexity": t["complexity"]
-    } for t in res.data]
-
-
-@router.get("/correlation/{topic_id}")
-def get_correlation(topic_id: str):
-    res = supabase.table("exam_patterns").select("*").eq("topic_id", topic_id).execute()
-    return res.data
-
 @router.post("/displayexam")
 async def display_exam(request: DisplayExamRequest):
     res = supabase.table("past_papers").select("*") \
