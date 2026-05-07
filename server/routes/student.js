@@ -59,7 +59,29 @@ router.get('/instructors/:course_id', async (req, res) => {
     }
 });
 
-// 4. GET Roadmap
+// 4. GET Course Details (for Dashboard dynamic titles)
+router.get('/course-details/:course_id', async (req, res) => {
+    try {
+        const { course_id } = req.params;
+        const db = await getDb();
+
+        const course = await db.collection('courses').findOne({ id: course_id });
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+
+        const university = await db.collection('universities').findOne({ id: course.university_id });
+
+        res.json({
+            courseId: course.id,
+            courseName: course.name || 'Your Course',
+            courseCode: course.id.includes('-') ? course.id.split('-').slice(1).join('-').toUpperCase() : 'CS',
+            universityName: university?.name || 'Your University',
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 5. GET Roadmap
 router.get('/roadmap/:course_id', async (req, res) => {
     try {
         const { course_id } = req.params;

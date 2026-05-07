@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { GraduationCap, Sparkles, BookOpen, BarChart3, LogOut, AlertCircle, Clock } from 'lucide-react';
+import { Sparkles, BookOpen, FileText, ChevronRight } from 'lucide-react';
 import { Topic } from '../data/mockData';
 import { api } from '../../services/api';
 
@@ -9,250 +9,159 @@ export default function Dashboard() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingPatterns, setGeneratingPatterns] = useState(false);
-  
-  
-  // Get current instructor name from Wizard selection
-  const currentInstructor = localStorage.getItem('selectedInstructorName') || "Your Instructor";
-  const courseId = localStorage.getItem('selectedCourseId') || 'cs-oop-java';
+
+  // Read from localStorage (saved by Wizard)
+  const currentInstructor = localStorage.getItem('selectedInstructorName') || '';
+  const courseId = localStorage.getItem('selectedCourseId') || '';
+  const courseName = localStorage.getItem('selectedCourseName') || 'Your Course';
+  const universityName = localStorage.getItem('selectedUniversityName') || 'Your University';
 
   useEffect(() => {
-    // Fetch roadmap for the selected course
-    api.get(`/student/roadmap/${courseId}`)
+    if (!courseId) return;
+    
+    // Also try to hydrate from API as a backup
+    api.get(`/student/course-details/${courseId}`)
       .then(response => {
-        setTopics(response.data);
+        const d = response.data;
+        if (!localStorage.getItem('selectedCourseName') && d.courseName) {
+          localStorage.setItem('selectedCourseName', d.courseName);
+        }
+        if (!localStorage.getItem('selectedUniversityName') && d.universityName) {
+          localStorage.setItem('selectedUniversityName', d.universityName);
+        }
       })
-      .catch(error => {
-        console.error("Failed to fetch roadmap:", error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+      .catch(() => {});
 
-  // --- ADD THIS HANDLER ---
+    api.get(`/student/roadmap/${courseId}`)
+      .then(response => setTopics(response.data))
+      .catch(error => console.error("Failed to fetch roadmap:", error))
+      .finally(() => setLoading(false));
+  }, [courseId]);
+
   const handleBookPatterns = async (topicName: string) => {
     try {
       setGeneratingPatterns(true);
-      // 1. Call the AI route we created in the backend
       const response = await api.get(`/student/book-patterns/${courseId}/${topicName}`);
-      
-      // 2. Navigate to the correlation page and pass the AI data
       navigate(`/correlation/ai-result`, { 
         state: { recommendations: response.data, topic: topicName } 
       });
     } catch (error) {
       console.error("AI Search failed:", error);
-      alert("AI Search failed. Check if the backend is running and textbook is indexed.");
     } finally {
       setGeneratingPatterns(false);
     }
   };
-  // ----------------------
-  
-  // Helper function to handle complexity colors (Added default for null)
-  const getComplexityColor = (complexity: string | null) => {
-    switch (complexity) {
-      case 'low':
-        return 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/30';
-      case 'medium':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'high':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'; // Gray for null
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* --- HEADER --- */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2 text-white">
-            <GraduationCap className="w-8 h-8 text-[#7C3AED]" />
-            <span className="text-2xl font-bold">AlphaLo</span>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48]">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12">
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/')}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-all flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
+        {/* ─── Minimal Header ─── */}
+        <div className="mb-12 border-l-2 border-[#7C3AED] pl-6">
+          <p className="text-[#7C3AED] text-xs font-bold tracking-[0.2em] uppercase mb-2">{universityName}</p>
+          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">{courseName}</h1>
+          <p className="text-gray-400 text-sm font-medium">
+            Curriculum Analysis for <span className="text-white">{currentInstructor || 'Selected Instructor'}</span>
+          </p>
         </div>
 
-        {/* --- WELCOME SECTION --- */}
-        <div className="backdrop-blur-xl bg-gradient-to-r from-[#7C3AED]/20 to-[#10B981]/20 border border-white/20 rounded-2xl p-6 mb-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                NUST OOP Prep Roadmap
-              </h1>
-              <p className="text-gray-300 text-sm">
-                Synchronized with the curriculum of <strong>{currentInstructor}</strong>
-              </p>
-            </div>
-            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-              <Sparkles className="w-8 h-8 text-[#7C3AED]" />
-            </div>
-          </div>
-        </div>
-
-        {/* --- FULL MOCK BUTTON --- */}
-        <div className="backdrop-blur-xl bg-gradient-to-r from-[#7C3AED]/20 to-[#9333EA]/20 border border-[#7C3AED]/30 rounded-2xl p-6 mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl">
-                <Sparkles className="w-6 h-6 text-white" />
+        <div className="space-y-8">
+          {/* ─── Mock Exam Action ─── */}
+          <button
+            onClick={() => navigate('/displayexam/full-exam')}
+            className="group w-full flex items-center justify-between p-6 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 hover:border-[#7C3AED]/30 rounded-2xl transition-all duration-300"
+          >
+            <div className="flex items-center gap-5">
+              <div className="w-12 h-12 bg-[#7C3AED]/10 border border-[#7C3AED]/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6 text-[#7C3AED]" />
               </div>
+              <div className="text-left">
+                <p className="text-white font-semibold text-lg">Generate Full-Length Mock</p>
+                <p className="text-gray-500 text-sm">Matches instructor's marks distribution and scenario style</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
+          </button>
+
+          {/* ─── Syllabus Breakdown ─── */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-sm relative overflow-hidden group/container">
+            {/* Subtle glow effect */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#7C3AED] rounded-full blur-[100px] opacity-10 group-hover/container:opacity-20 transition-opacity"></div>
+            
+            <div className="flex items-center justify-between mb-8 relative z-10">
               <div>
-                <h3 className="text-xl font-bold text-white">Full-Length Java OOP Mock</h3>
-                <p className="text-gray-300 text-sm">
-                  Generate an exam matching {currentInstructor}'s marks distribution and scenario style.
-                </p>
+                <h2 className="text-xl font-bold text-white mb-1 tracking-tight">Syllabus Breakdown</h2>
+                <p className="text-gray-500 text-sm font-medium">Textbook correlations and exam patterns</p>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
+                <span className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-pulse"></span>
+                <span className="text-xs text-gray-300 font-bold uppercase tracking-wider">
+                  {topics.length} Units
+                </span>
               </div>
             </div>
-            <button
-              onClick={() => navigate('/displayexam/full-exam')}
-              className="px-6 py-3 bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:shadow-xl hover:shadow-[#7C3AED]/40 text-white rounded-xl font-semibold transition-all flex items-center gap-2 group whitespace-nowrap"
-            >
-              <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              Generate Full Paper
-            </button>
-          </div>
-        </div>
 
-        {/* --- DYNAMIC LESSON PLAN TABLE --- */}
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-white/20 bg-white/5">
-            <h2 className="text-2xl font-bold text-white">Syllabus Breakdown</h2>
-            <p className="text-gray-300 text-sm mt-1">
-              Week-by-week analysis of exam patterns and textbook correlations.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-8 text-center text-white">Loading syllabus topics...</div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/20 bg-white/5">
-                    <th className="text-left p-4 text-white font-semibold">Timeline</th>
-                    <th className="text-left p-4 text-white font-semibold">Topic</th>
-                    <th className="text-left p-4 text-white font-semibold">AI Style Insight</th>
-                    <th className="text-left p-4 text-white font-semibold">Complexity</th>
-                    <th className="text-left p-4 text-white font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topics.map((topic, index) => (
-                    <tr
-                      key={topic.id}
-                      className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
-                        index % 2 === 0 ? 'bg-white/[0.02]' : ''
-                      }`}
-                    >
-                      <td className="p-4">
-                        <span className="inline-block px-3 py-1 bg-[#1A2B48] border border-[#7C3AED]/30 rounded-lg text-white text-xs font-medium">
-                          {topic.phase || `Week ${topic.week_number || ''}`}
-                        </span>
-                      </td>
-                      <td className="p-4 text-white font-medium">{topic.topic}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-gray-500" />
-                          <span className="text-gray-400 text-xs">
-                            {topic.aiPattern ? topic.aiPattern : "Analyzing past papers..."}
+            <div className="relative z-10 overflow-x-auto">
+              {loading ? (
+                <div className="py-20 text-center">
+                  <div className="w-8 h-8 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm font-medium">Analyzing curriculum...</p>
+                </div>
+              ) : topics.length === 0 ? (
+                <div className="py-20 text-center">
+                  <p className="text-gray-500 text-sm">No roadmap data found for this course.</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/5">
+                      <th className="text-left py-4 px-2 text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Timeline</th>
+                      <th className="text-left py-4 px-2 text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Syllabus Topic</th>
+                      <th className="text-right py-4 px-2 text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Prep Tool</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.03]">
+                    {topics.map((topic) => (
+                      <tr
+                        key={topic.id}
+                        className="group hover:bg-white/[0.02] transition-colors"
+                      >
+                        <td className="py-5 px-2">
+                          <span className="text-xs text-gray-500 font-mono tracking-tighter">
+                            {topic.phase || `WEEK ${topic.week_number || ''}`}
                           </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-lg text-[10px] font-bold border ${getComplexityColor(
-                            topic.complexity
-                          )}`}
-                        >
-                          {topic.complexity ? topic.complexity.toUpperCase() : "PENDING"}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <button
-                          onClick={() => handleBookPatterns(topic.topic)}
-                          className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2"
-                        >
-                          <BookOpen className="w-4 h-4" />
-                          Book Patterns
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {topics.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-400">
-                        No syllabus topics found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
+                        </td>
+                        <td className="py-5 px-2">
+                          <p className="text-white text-sm font-semibold tracking-tight">{topic.topic}</p>
+                        </td>
+                        <td className="py-5 px-2 text-right">
+                          <button
+                            onClick={() => handleBookPatterns(topic.topic)}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-[#10B981] hover:text-white bg-[#10B981]/10 hover:bg-[#10B981] border border-[#10B981]/20 hover:border-[#10B981] rounded-xl transition-all duration-300 shadow-lg shadow-[#10B981]/5"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            Book Patterns
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* --- DYNAMIC STATS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6">
-            <h3 className="text-white font-semibold flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-[#7C3AED]" /> Total Weeks
-            </h3>
-            <p className="text-3xl font-bold text-white">{topics.length}</p>
-            <p className="text-gray-400 text-xs mt-1">Full semester roadmap</p>
-          </div>
-
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6">
-            <h3 className="text-white font-semibold flex items-center gap-2 mb-2">
-              <BookOpen className="w-4 h-4 text-[#10B981]" /> Study Materials
-            </h3>
-            <p className="text-3xl font-bold text-white">{topics.length * 2}</p>
-            <p className="text-gray-400 text-xs mt-1">Correlated book sections</p>
-          </div>
-
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6">
-            <h3 className="text-white font-semibold flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-red-400" /> High Complexity
-            </h3>
-            <p className="text-3xl font-bold text-white">
-              {topics.filter(t => t.complexity === 'high').length}
-            </p>
-            <p className="text-gray-400 text-xs mt-1">Requiring focused practice</p>
-          </div>
-        </div>
-
       </div>
 
-      {/* --- LOADING OVERLAY --- */}
+      {/* ─── Loading Overlay ─── */}
       {generatingPatterns && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/40">
-          <div className="bg-[#1A2B48] border border-white/20 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4">
-            <div className="relative w-20 h-20 mb-6">
-              <div className="absolute inset-0 border-4 border-[#7C3AED]/20 rounded-full"></div>
-              <div className="absolute inset-0 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin"></div>
-              <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-[#7C3AED] animate-pulse" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2 text-center">Analyzing Patterns</h2>
-            <p className="text-gray-400 text-sm text-center">
-              Scanning your instructor's past papers and mapping them to textbook exercises...
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
+          <div className="bg-[#1A2B48] border border-white/15 p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-xs w-full mx-4">
+            <div className="w-10 h-10 border-3 border-[#7C3AED] border-t-transparent rounded-full animate-spin mb-5" />
+            <h3 className="text-lg font-semibold text-white mb-1">Analyzing Patterns</h3>
+            <p className="text-gray-500 text-sm text-center">
+              Scanning past papers and mapping to textbook exercises...
             </p>
-            <div className="mt-6 flex gap-1">
-              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce"></div>
-              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-1.5 h-1.5 bg-[#7C3AED] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            </div>
           </div>
         </div>
       )}

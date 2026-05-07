@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { GraduationCap, Sparkles, BookOpen, Target, ChevronRight } from 'lucide-react';
+import { Sparkles, BookOpen, Target, ChevronRight } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 
 export default function Landing() {
@@ -30,11 +30,6 @@ export default function Landing() {
       <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
         {/* Left side - Value Proposition */}
         <div className="text-white space-y-6">
-          <div className="flex items-center gap-2 mb-8">
-            <GraduationCap className="w-10 h-10 text-[#7C3AED]" />
-            <span className="text-3xl font-bold">AlphaLo</span>
-          </div>
-
           <h1 className="text-5xl font-bold leading-tight">
             Prepare for exams,
             <br />
