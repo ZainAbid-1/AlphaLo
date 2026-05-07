@@ -247,12 +247,15 @@ export default function MockExam() {
                             <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
                             <div className="relative bg-[#0F172A]/80 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
                               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                                <div className="flex gap-1.5">
-                                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
-                                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
-                                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                                <div className="flex gap-2">
+                                  <div className="w-3 h-3 rounded-full bg-[#FF5F56] shadow-inner"></div>
+                                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner"></div>
+                                  <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-inner"></div>
                                 </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{match ? match[1] : 'code'}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse"></div>
+                                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{match ? match[1] : 'source code'}</span>
+                                </div>
                               </div>
                               <div className="p-6 overflow-x-auto">
                                 <pre className="m-0 text-[#E0E7FF] leading-relaxed">
@@ -303,12 +306,12 @@ export default function MockExam() {
                                   <div className="my-6 relative group">
                                     <div className="relative bg-[#0F172A]/80 backdrop-blur-sm rounded-xl border border-white/10 font-mono text-xs overflow-hidden shadow-xl">
                                       <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
-                                        <div className="flex gap-1">
-                                          <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/40"></div>
-                                          <div className="w-2 h-2 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
-                                          <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                                        <div className="flex gap-1.5">
+                                          <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                          <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                          <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
                                         </div>
-                                        <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">{match ? match[1] : 'code'}</span>
+                                        <span className="text-[8px] text-gray-400 font-black uppercase tracking-[0.2em]">{match ? match[1] : 'source code'}</span>
                                       </div>
                                       <div className="p-4 overflow-x-auto">
                                         <pre className="m-0 text-[#E0E7FF] leading-relaxed">

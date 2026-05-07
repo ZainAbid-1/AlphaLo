@@ -67,9 +67,11 @@ class QuestionExtractor:
            * CRITICAL: Do NOT create separate objects for each option.
            * CRITICAL: Do NOT include options like "a. True" inside the "text" field.
         4. TRUE/FALSE GROUPING: Treat each True/False statement as a single question with ["True", "False"] in the "options" array.
-        5. CODE RULE: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', '{{}}', or any programming syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java).
-        6. PRETTY PRINT CODE: If the source code is on a single line, reformat it with proper indentation and newlines for readability.
-        7. REPRODUCTION: Reproduce the question text ACCURATELY.
+        5. CODE DETECTION: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', 'float', 'bool', 'char', 'string', 'if', 'else', 'for', 'while', 'function', 'const', 'let', 'var', 'def', 'import', 'from', 'include', 'iostream', 'std', '<html', '<div', '<style', '<script', '{{}}', '[]', '()', '=>' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java, ```html, ```python, ```cpp).
+        6. PRETTY PRINT CODE: If the source code is on a single line or poorly formatted, reformat it with proper indentation and newlines for readability.
+        7. TABLES: If you encounter tabular data or lists that look like they should be in a table (e.g., multiple columns with headers), YOU MUST RECONSTRUCT THEM AS MARKDOWN TABLES. 
+           - Example: | Header 1 | Header 2 | \n |---|---| \n | Row 1 | Row 1 |
+        8. REPRODUCTION: Reproduce the question text ACCURATELY.
         
         EXAMPLE OUTPUT:
         [

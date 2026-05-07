@@ -36,6 +36,15 @@ export default function BookCorrelation() {
     ul: ({ node, ...props }: any) => <ul className="list-disc pl-5 mb-4 space-y-2 text-gray-300" {...props} />,
     li: ({ node, ...props }: any) => <li className="leading-relaxed" {...props} />,
     strong: ({ node, ...props }: any) => <strong className="text-white font-bold" {...props} />,
+    table: ({ node, ...props }: any) => (
+      <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-sm">
+        <table className="w-full text-base text-left border-collapse" {...props} />
+      </div>
+    ),
+    thead: ({ node, ...props }: any) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />,
+    th: ({ node, ...props }: any) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
+    tr: ({ node, ...props }: any) => <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />,
+    td: ({ node, ...props }: any) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
     code: ({ node, inline, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
@@ -66,12 +75,15 @@ export default function BookCorrelation() {
           <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
           <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#FF5F56] shadow-inner"></div>
+                <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner"></div>
+                <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-inner"></div>
               </div>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{language || 'code'}</span>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse"></div>
+                <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{language || 'source code'}</span>
+              </div>
             </div>
             <div className="p-6 overflow-x-auto">
               <pre className="m-0 text-[#E0E7FF] leading-relaxed">

@@ -56,9 +56,10 @@ CRITICAL FORMATTING RULES (FAILURE IS UNACCEPTABLE):
 1. CODE BLOCKS: Any code (Java, Python, C++, etc.) MUST be wrapped in triple backticks with the language ID.
    Example: ```java\\npublic class Main {{ ... }}\\n```
 2. NO PLAIN TEXT CODE: Never include code as regular text. It must always be in a block.
-3. TABLES: Any tabular data MUST be returned as a standard Markdown table (e.g., | Header | Header |).
-4. NEW LINES: Use double newlines (\\n\\n) between any introductory text and a code block or table.
+3. TABLES: Any tabular data or list-based comparisons MUST be returned as a standard Markdown table (e.g., | Header | Header |). This is NON-NEGOTIABLE.
+4. NEW LINES: Use double newlines (\n\n) between any introductory text and a code block or table.
 5. MATH NOTATION: Use clear formatting for mathematical expressions.
+6. CODE DETECTION: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', 'float', 'bool', 'char', 'string', 'if', 'else', 'for', 'while', 'function', 'const', 'let', 'var', 'def', 'import', 'from', 'include', 'iostream', 'std', '<html', '<div', '<style', '<script', '{{}}', '[]', '()', '=>' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID.
 
 STRUCTURE RULES:
 - You will receive a JSON list of N question objects. Return EXACTLY N objects.
@@ -101,11 +102,11 @@ STRUCTURE RULES:
 
 CRITICAL RULES:
 - NO FRAGMENTATION: If a question has parts a, b, c that are options, they MUST be in the "options" array of a SINGLE object.
-- CODE DETECTION: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', '{{}}', or any programming syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java).
-- PRETTY PRINT CODE: If the source code is on a single line, reformat it with proper indentation and newlines for readability.
+- CODE DETECTION: Any text containing keywords like 'class', 'public', 'static', 'void', 'int', 'float', 'bool', 'char', 'string', 'if', 'else', 'for', 'while', 'function', 'const', 'let', 'var', 'def', 'import', 'from', 'include', 'iostream', 'std', '<html', '<div', '<style', '<script', '{{}}', '[]', '()', '=>' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID (e.g., ```java, ```html, ```python, ```cpp).
+- PRETTY PRINT CODE: If the source code is on a single line or poorly formatted, reformat it with proper indentation and newlines for readability.
 - DO NOT REPEAT: Do not repeat the main question text for every option.
 - DO NOT SKIP: Scan the ENTIRE document.
-- KEEP TABLES: Reconstruct tables as Markdown.
+- KEEP TABLES: Reconstruct ALL tables as Markdown. If you see text like "S.Nr. Feature GET POST...", convert it to a proper table.
 
 JSON FORMATTING:
 - Return ONLY a valid JSON list.
