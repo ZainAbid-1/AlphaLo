@@ -39,7 +39,7 @@ async def get_book_patterns(course_id: str, topic_name: str, extractor = Depends
         search_queries = [topic_name]
     else:
         # 2. Extract specific topic questions
-        search_queries = extractor.get_specific_topic_questions(paper["raw_content"], topic_name)
+        search_queries = extractor.get_questions(paper["raw_content"], topic_name)
 
     # 3. Match to Pinecone
     recommendations = recommender.get_book_recommendations(search_queries)

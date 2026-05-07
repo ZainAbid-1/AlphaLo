@@ -6,20 +6,20 @@ import os
 import logging
 
 class QuestionExtractor:
-    def __init__(self, llm=None, api_key: str = None, model_name: str = None):
+    def __init__(self, llm=None, api_key: str | None = None, model_name: str | None = None):
         if llm:
             self.llm = llm
         else:
             provider = os.getenv("AI_PROVIDER", "openai").lower()
             if provider == "groq":
                 self.llm = ChatGroq(
-                    model=model_name or os.getenv("GROQ_MODEL_NAME"),
+                    model=model_name or os.getenv("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile",
                     groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
                     temperature=0.1
                 )
             else:
                 self.llm = ChatOpenAI(
-                    model=model_name or os.getenv("OPENAI_MODEL_NAME"),
+                    model=model_name or os.getenv("OPENAI_MODEL_NAME") or "gpt-4o-mini",
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     temperature=0.1
                 )
