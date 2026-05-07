@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from services.mongo_client import db
 from services.textbook_parser import TextbookIngestor
-from dependencies import get_textbook_parser, get_question_extractor, get_admin_user
+from dependencies import get_textbook_parser, get_question_extractor, get_admin_user, get_exam_generator
 
 router = APIRouter(dependencies=[Depends(get_admin_user)])
 
@@ -32,22 +32,27 @@ async def process_textbook_task(temp_file_path: str, course_id: str, title: str,
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-async def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, paper_type: str, extractor):
+async def process_past_paper_task(temp_file_path: str, course_id: str, title: str, instructor_id: str, paper_type: str, extractor, generator):
     """Parses past paper into a string blueprint and saves to MongoDB."""
     try:
         # 1. AI Logic: Extract full text from PDF
         exam_text = extractor.exam_parser(temp_file_path)
         
-        # 2. Database Logic: Save the blueprint to MongoDB
+        # 2. AI Logic: Structure the text into a blueprint (Questions, Options, Sub-questions)
+        print(f"DEBUG: Extracting structured blueprint for '{title}'...")
+        blueprint = await generator.extract_blueprint(exam_text)
+
+        # 3. Database Logic: Save the blueprint and raw content to MongoDB
         await db.past_papers.insert_one({
             "course_id": course_id,
             "instructor_id": instructor_id,
             "paper_title": title,
             "raw_content": exam_text,
+            "blueprint": blueprint,
             "paper_type": paper_type,
             "created_at": datetime.utcnow()
         })
-        print(f"SUCCESS: Past Paper '{title}' saved as AI Blueprint in MongoDB.")
+        print(f"SUCCESS: Past Paper '{title}' saved with structured AI Blueprint in MongoDB.")
     except Exception as e:
         print(f"ERROR: Failed to process past paper '{title}': {str(e)}")
     finally:
@@ -66,7 +71,8 @@ async def upload_textbook(
     file: UploadFile = File(...), 
     parser: TextbookIngestor = Depends(get_textbook_parser)
 ):
-    if not file.filename.lower().endswith('.pdf'):
+    filename = file.filename or ""
+    if not filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
     # Save the file temporarily for the parser to read
@@ -92,9 +98,11 @@ async def upload_past_paper(
     paper_type: str,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...), 
-    extractor = Depends(get_question_extractor)
+    extractor = Depends(get_question_extractor),
+    generator = Depends(get_exam_generator)
 ):
-    if not file.filename.lower().endswith('.pdf'):
+    filename = file.filename or ""
+    if not filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
     # Save the file temporarily
@@ -105,7 +113,7 @@ async def upload_past_paper(
         buffer.write(await file.read())
 
     # Hand off the heavy work to a background thread
-    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, paper_type, extractor)
+    background_tasks.add_task(process_past_paper_task, temp_file_path, course_id, title, instructor_id, paper_type, extractor, generator)
 
     return {
         "status": "Accepted", 
