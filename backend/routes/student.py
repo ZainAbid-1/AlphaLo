@@ -11,6 +11,7 @@ class DisplayExamRequest(BaseModel):
     instructor_id: str
     generation_count: int
     paper_type: str
+    force_refresh: bool = False
 
 @router.post("/displayexam")
 async def display_exam(request: DisplayExamRequest):
@@ -24,10 +25,13 @@ async def display_exam(request: DisplayExamRequest):
     if not past_paper:
         raise HTTPException(status_code=404, detail="Paper not found in MongoDB.")
     
-    # 2. Trigger AI Generation (blueprint is Redis-cached on second+ calls)
+    # 2. Trigger AI Generation (blueprint is Redis-cached unless force_refresh=True)
     exam_generator = get_exam_generator()
-    cache_key = f"{request.course_id}:{request.instructor_id}:{request.paper_type}"
-    data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
+    data = await exam_generator.generate(
+        past_paper["raw_content"], 
+        request.generation_count, 
+        force_refresh=request.force_refresh
+    )
     return data
 
 @router.get("/book-patterns/{course_id}/{topic_name}")
