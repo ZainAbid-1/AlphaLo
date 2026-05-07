@@ -13,8 +13,8 @@ export default function Dashboard() {
   // Read from localStorage (saved by Wizard)
   const currentInstructor = localStorage.getItem('selectedInstructorName') || '';
   const courseId = localStorage.getItem('selectedCourseId') || '';
-  const courseName = localStorage.getItem('selectedCourseName') || 'Your Course';
-  const universityName = localStorage.getItem('selectedUniversityName') || 'Your University';
+  const courseName = localStorage.getItem('selectedCourseName') || 'Course Roadmap';
+  const universityName = localStorage.getItem('selectedUniversityName') || 'University Prep';
 
   useEffect(() => {
     if (!courseId) return;

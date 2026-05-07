@@ -27,7 +27,7 @@ export default function Landing() {
         <div className="absolute bottom-20 right-20 w-72 h-72 bg-[#10B981] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
       </div>
 
-      <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
+      <div className="max-w-[1400px] w-full grid lg:grid-cols-2 gap-12 items-center relative z-10 px-6 lg:px-12">
         {/* Left side - Value Proposition */}
         <div className="text-white space-y-6">
           <h1 className="text-5xl font-bold leading-tight">

@@ -67,7 +67,7 @@ export default function Wizard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48]">
-      <div className="max-w-7xl mx-auto flex min-h-[calc(100vh-64px)]">
+      <div className="max-w-[1400px] mx-auto flex min-h-[calc(100vh-64px)]">
 
         {/* ─── LEFT SIDEBAR: Progress ─── */}
         <div className="hidden lg:flex w-80 flex-shrink-0 flex-col justify-between p-8 border-r border-white/10">
