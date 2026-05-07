@@ -6,6 +6,87 @@ import { api } from '../../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+// ─── Shared Markdown Renderer ─────────────────────────────────────────────────
+// Mirrors the MarkdownComponents in BookCorrelation.tsx exactly so that tables,
+// code windows (macOS style with language label), and typography are consistent.
+const ExamMarkdownComponents: any = {
+  h1: ({ node, ...props }: any) => <h1 className="text-2xl font-bold text-white mb-4 mt-8 first:mt-0" {...props} />,
+  h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold text-[#7C3AED] mb-3 mt-6 first:mt-0" {...props} />,
+  h3: ({ node, ...props }: any) => <h3 className="text-lg font-semibold text-white/90 mb-2 mt-4" {...props} />,
+  p:  ({ node, ...props }: any) => <p  className="mb-4 leading-relaxed text-gray-200 last:mb-0" {...props} />,
+  ul: ({ node, ...props }: any) => <ul className="list-disc pl-6 mb-4 space-y-2 text-gray-200" {...props} />,
+  ol: ({ node, ...props }: any) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-gray-200" {...props} />,
+  li: ({ node, ...props }: any) => <li className="leading-relaxed" {...props} />,
+  strong: ({ node, ...props }: any) => <strong className="text-white font-bold" {...props} />,
+  em:     ({ node, ...props }: any) => <em     className="text-gray-300 italic"  {...props} />,
+
+  // ── Premium glassmorphism table ──────────────────────────────────────────────
+  table: ({ node, ...props }: any) => (
+    <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-sm">
+      <table className="w-full text-base text-left border-collapse" {...props} />
+    </div>
+  ),
+  thead: ({ node, ...props }: any) => (
+    <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />
+  ),
+  th: ({ node, ...props }: any) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
+  tr: ({ node, ...props }: any) => (
+    <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />
+  ),
+  td: ({ node, ...props }: any) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
+
+  // ── macOS-style code window (identical to BookCorrelation) ───────────────────
+  code: ({ node, inline, className, children, ...props }: any) => {
+    const match    = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const content  = String(children).replace(/\n$/, '');
+    const isMultiLine = content.includes('\n');
+    const useMacWindow = !inline && (isMultiLine || language);
+
+    if (inline) {
+      return (
+        <code
+          className="px-1.5 py-0.5 rounded bg-[#7C3AED]/20 font-mono text-sm text-[#A5B4FC] border border-[#7C3AED]/30"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    if (!useMacWindow) {
+      return <code className="font-mono text-[#A5B4FC]" {...props}>{children}</code>;
+    }
+
+    return (
+      <div className="my-8 relative group">
+        {/* Ambient glow */}
+        <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/20 to-[#3B82F6]/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity" />
+        {/* Window chrome */}
+        <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
+          {/* Title bar */}
+          <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+            {/* Traffic lights */}
+            <div className="flex gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#FF5F56] shadow-inner" />
+              <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner" />
+              <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-inner" />
+            </div>
+            {/* Pulse dot only — no language label */}
+            <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse" />
+          </div>
+          {/* Code body */}
+          <div className="p-6 max-h-[600px] overflow-y-auto">
+            <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
+              <code className={className} {...props}>{children}</code>
+            </pre>
+          </div>
+        </div>
+      </div>
+    );
+  },
+};
+
 export default function MockExam() {
   const navigate = useNavigate();
   const { topicId } = useParams();
@@ -47,6 +128,62 @@ export default function MockExam() {
       });
 
       const formattedQuestions = res.data.map((q: any) => {
+        const wrapCode = (text: string): string => {
+          if (!text || text.includes('```')) return text;
+
+          // ── Ordered code signals: [regex, language] ──────────────────────────
+          // More specific patterns first so HTML beats generic JS, Java beats JS, etc.
+          const CODE_SIGNALS: [RegExp, string][] = [
+            [/<!DOCTYPE|<html[\s>]|<body[\s>]|<head[\s>]/i,                          'html'],
+            [/<(?:script|style|div|span|form|input|button|table|ul|li|p|h[1-6])[\s>]/i, 'html'],
+            [/\bpublic\s+(?:static\s+)?(?:void|class|int|String|boolean|double)\b/,  'java'],
+            [/\bSystem\.out\.(?:print|println)\s*\(/,                                 'java'],
+            [/\bdef\s+\w+\s*\(.*\)\s*:/,                                             'python'],
+            [/\bprint\s*\(["']/,                                                     'python'],
+            [/#[\w-]+\s*\{|\.[\w-]+\s*\{|\bflex(?:box)?\b.*\{/i,                   'css'],
+            [/\b(?:let|const|var)\s+\w+\s*=(?!=)/,                                  'javascript'],
+            [/\bconsole\.(?:log|error|warn|info)\s*\(/,                              'javascript'],
+            [/document\.(?:getElementById|querySelector|addEventListener)/,           'javascript'],
+            [/\.(?:filter|map|reduce|forEach|find|some|every)\s*\(/,                'javascript'],
+            [/\bfunction\s+\w+\s*\(|=>\s*[\{\[]/,                                   'javascript'],
+            [/\bSELECT\b.+\bFROM\b/is,                                               'sql'],
+          ];
+
+          // Find the EARLIEST code signal and its language
+          let detectedLang = '';
+          let earliestPos  = text.length;
+
+          for (const [pattern, lang] of CODE_SIGNALS) {
+            const m = pattern.exec(text);
+            if (m && m.index < earliestPos) {
+              earliestPos  = m.index;
+              detectedLang = lang;
+            }
+          }
+
+          if (!detectedLang) return text; // No code found — leave as-is
+
+          // ── Split narrative from code at the last clean boundary before code ──
+          const before = text.slice(0, earliestPos);
+          let splitPos = 0;
+          const newline   = before.lastIndexOf('\n');
+          const dotSpace  = before.lastIndexOf('. ');
+          const colonSpace= before.lastIndexOf(': ');
+          for (const pos of [newline, dotSpace, colonSpace]) {
+            if (pos > splitPos) splitPos = pos + 1;
+          }
+
+          const narrative = text.slice(0, splitPos).trim();
+          const codeBody  = text.slice(splitPos).trim();
+
+          if (!codeBody) return text;
+
+          if (narrative) {
+            return `${narrative}\n\n\`\`\`${detectedLang}\n${codeBody}\n\`\`\``;
+          }
+          return `\`\`\`${detectedLang}\n${codeBody}\n\`\`\``;
+        };
+
         let parsedOptions = q.options;
         if (typeof parsedOptions === 'string') {
           try {
@@ -55,10 +192,16 @@ export default function MockExam() {
             parsedOptions = [];
           }
         }
+
         return {
           ...q,
+          text: wrapCode(q.text),
           type: q.type || 'short-answer', 
-          options: parsedOptions
+          options: parsedOptions,
+          sub_questions: q.sub_questions?.map((sq: any) => ({
+            ...sq,
+            text: wrapCode(sq.text)
+          }))
         };
       });
       setTopicQuestions(formattedQuestions);
@@ -149,7 +292,7 @@ export default function MockExam() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 pb-24 overflow-x-hidden">
       <div className="max-w-[1400px] mx-auto py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 px-4">
@@ -173,7 +316,7 @@ export default function MockExam() {
                 {q.section_title && (
                   <div className="mb-12 mt-8 flex items-center gap-6">
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                    <h2 className="text-2xl font-black text-white/40 tracking-[0.3em] uppercase whitespace-nowrap">{q.section_title}</h2>
+                    <h2 className="text-xl font-black text-white/40 tracking-[0.2em] uppercase text-center px-2">{q.section_title}</h2>
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                   </div>
                 )}
@@ -186,123 +329,40 @@ export default function MockExam() {
                     </div>
                   </div>
 
+                  {/* ── Main question text ── */}
                   <div className="text-white text-xl font-medium mb-8 leading-relaxed font-sans">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ node, ...props }) => <p className="mb-6 last:mb-0" {...props} />,
-                        table: ({ node, ...props }) => (
-                          <div className="my-8 overflow-x-auto rounded-2xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-sm">
-                            <table className="w-full text-base text-left border-collapse" {...props} />
-                          </div>
-                        ),
-                        thead: ({ node, ...props }) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />,
-                        th: ({ node, ...props }) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
-                        tr: ({ node, ...props }) => <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />,
-                        td: ({ node, ...props }) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
-                        code: ({ node, inline, className, children, ...props }: any) => {
-                          const match = /language-(\w+)/.exec(className || '');
-                          return inline ? (
-                            <code className="px-1.5 py-0.5 rounded bg-white/20 font-mono text-sm text-[#A5B4FC] border border-white/10" {...props}>
-                              {children}
-                            </code>
-                          ) : (
-                            <div className="my-8 relative group">
-                              <div className="absolute -inset-2 bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                              <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-2xl border border-white/10 font-mono text-sm overflow-hidden shadow-2xl">
-                                <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
-                                  <div className="flex gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-[#FF5F56] shadow-inner"></div>
-                                    <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner"></div>
-                                    <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-inner"></div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-[#7C3AED]/50"></div>
-                                  </div>
-                                </div>
-                                <div className="p-6 max-h-[600px] overflow-y-auto custom-scrollbar">
-                                  <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  </pre>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        },
-                      }}
-                    >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={ExamMarkdownComponents}>
                       {q.text}
                     </ReactMarkdown>
                   </div>
 
-                  {/* Sub-questions Rendering */}
+                  {/* ── Sub-questions ── */}
                   {q.sub_questions && q.sub_questions.length > 0 && (
-                    <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-12">
+                    <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-10">
                       {q.sub_questions.map((sq: any, sqIndex: number) => (
-                        <div key={sqIndex} className="relative pl-8 border-l-2 border-[#7C3AED]/30 space-y-6 group">
-                          {/* Sub-question Numbering Marker */}
-                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#1A2B48] border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
-                          
+                        <div key={sqIndex} className="relative pl-8 border-l-2 border-[#7C3AED]/30 space-y-5 group">
+                          {/* Bullet marker */}
+                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#1A2B48] border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.5)]" />
+
+                          {/* Sub-question text — same renderer */}
                           <div className="text-gray-200 text-lg font-medium leading-relaxed">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
-                                table: ({ node, ...props }) => (
-                                  <div className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-white/5 shadow-inner backdrop-blur-sm">
-                                    <table className="w-full text-sm text-left border-collapse" {...props} />
-                                  </div>
-                                ),
-                                thead: ({ node, ...props }) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-xs uppercase font-black tracking-widest text-gray-400" {...props} />,
-                                th: ({ node, ...props }) => <th className="px-4 py-4 border-b border-white/10" {...props} />,
-                                tr: ({ node, ...props }) => <tr className="border-b border-white/5 transition-colors hover:bg-white/5 even:bg-white/5" {...props} />,
-                                td: ({ node, ...props }) => <td className="px-4 py-3 text-gray-300" {...props} />,
-                                code: ({ node, inline, className, children, ...props }: any) => {
-                                  const match = /language-(\w+)/.exec(className || '');
-                                  return inline ? (
-                                    <code className="px-1.5 py-0.5 rounded bg-white/20 font-mono text-sm text-[#A5B4FC] border border-white/10" {...props}>
-                                      {children}
-                                    </code>
-                                  ) : (
-                                    <div className="my-6 relative group">
-                                      <div className="relative bg-[#0F172A]/90 backdrop-blur-sm rounded-xl border border-white/10 font-mono text-xs overflow-hidden shadow-xl">
-                                        <div className="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/5">
-                                          <div className="flex gap-1.5">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
-                                          </div>
-                                        </div>
-                                        <div className="p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-                                          <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
-                                            <code className={className} {...props}>
-                                              {children}
-                                            </code>
-                                          </pre>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                },
-                              }}
-                            >
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={ExamMarkdownComponents}>
                               {sq.text}
                             </ReactMarkdown>
                           </div>
 
+                          {/* Sub-question MCQ options */}
                           {sq.options && sq.options.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 max-w-4xl mt-6">
+                            <div className="grid grid-cols-1 gap-3 max-w-3xl mt-4">
                               {sq.options.map((option: string, optIndex: number) => (
                                 <div
                                   key={optIndex}
-                                  className="group/option flex items-start gap-3 py-2 px-4 rounded-xl transition-all hover:bg-white/5 cursor-pointer"
+                                  className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/5 text-gray-300 transition-all hover:bg-white/10 hover:border-white/10 cursor-pointer"
                                 >
-                                  <div className="text-[#7C3AED] font-bold text-base shrink-0 group-hover/option:scale-110 transition-transform">
-                                    ({String.fromCharCode(97 + optIndex)})
+                                  <div className="w-7 h-7 rounded-md bg-[#7C3AED]/20 border border-[#7C3AED]/30 text-[#A78BFA] flex items-center justify-center font-black text-xs shrink-0 uppercase">
+                                    {String.fromCharCode(65 + optIndex)}
                                   </div>
-                                  <span className="text-gray-300 text-base leading-relaxed">{option}</span>
+                                  <span className="text-base leading-relaxed">{option}</span>
                                 </div>
                               ))}
                             </div>
@@ -312,17 +372,18 @@ export default function MockExam() {
                     </div>
                   )}
 
+                  {/* ── Top-level MCQ options (no sub-questions) ── */}
                   {(!q.sub_questions || q.sub_questions.length === 0) && q.options && q.options.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 max-w-4xl mt-8">
+                    <div className="grid grid-cols-1 gap-3 max-w-4xl mt-8">
                       {q.options.map((option: string, optIndex: number) => (
                         <div
                           key={optIndex}
-                          className="group/option flex items-start gap-4 py-3 px-6 rounded-2xl transition-all hover:bg-white/5 cursor-pointer"
+                          className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/5 text-gray-200 transition-all hover:bg-white/10 hover:border-white/10 cursor-pointer"
                         >
-                          <div className="text-[#7C3AED] font-black text-lg shrink-0 group-hover/option:scale-110 transition-transform">
-                            ({String.fromCharCode(97 + optIndex)})
+                          <div className="w-7 h-7 rounded-md bg-[#7C3AED]/20 border border-[#7C3AED]/30 text-[#A78BFA] flex items-center justify-center font-black text-xs shrink-0 uppercase">
+                            {String.fromCharCode(65 + optIndex)}
                           </div>
-                          <span className="text-gray-200 text-lg leading-relaxed">{option}</span>
+                          <span className="text-lg leading-relaxed">{option}</span>
                         </div>
                       ))}
                     </div>

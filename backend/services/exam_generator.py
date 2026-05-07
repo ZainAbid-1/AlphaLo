@@ -7,7 +7,7 @@ import redis.asyncio as aioredis
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 
-# --- Redis client (lazy-initialized, module-level singleton) ---
+# ── Redis client (lazy-initialised, shared across requests) ───────────────────
 _redis_client: aioredis.Redis | None = None
 
 async def _get_redis() -> aioredis.Redis | None:
@@ -22,11 +22,14 @@ async def _get_redis() -> aioredis.Redis | None:
         await _redis_client.ping()  # type: ignore[misc]
         print("INFO: Redis connected (ExamGenerator)")
     except Exception as e:
-        print(f"WARN: Redis unavailable — skipping blueprint cache. ({e})")
+        print(f"WARN: Redis unavailable — skipping cache. ({e})")
         _redis_client = None
     return _redis_client
 
-BLUEPRINT_TTL = 60 * 60 * 24 * 30  # 30 days — blueprints are stable
+# Blueprint (Step 1) lives for 30 days — it is deterministic for a given paper.
+BLUEPRINT_TTL   = 60 * 60 * 24 * 30
+# Full generated exam cached 24 h per generation_count slot.
+EXAM_RESULT_TTL = 60 * 60 * 24
 
 
 class ExamGeneratorService:
@@ -48,108 +51,247 @@ class ExamGeneratorService:
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     temperature=0.1,
                     timeout=150,
-                    max_tokens=16384
+                    max_tokens=8192   # Reduced from 16384 — cuts tail-latency on large papers
                 )
 
-    def _clean_json(self, raw_output):
-        """Robustly extract a JSON array from LLM output using bracket matching."""
+    # ── Cache key helpers ─────────────────────────────────────────────────────
+
+    def _blueprint_key(self, raw_content: str) -> str:
+        """Stable key for the Step-1 blueprint — based only on paper content."""
+        return "alphalo:exam:bp:" + hashlib.sha256(raw_content.encode()).hexdigest()
+
+    def _result_key(self, raw_content: str, generation_count: int) -> str:
+        """Per-generation-slot key so each 'refresh' slot gets its own cached exam."""
+        digest = hashlib.sha256(raw_content.encode()).hexdigest()
+        return f"alphalo:exam:result:{digest}:{generation_count}"
+
+    # ── JSON helper ───────────────────────────────────────────────────────────
+
+    def _clean_json(self, raw_output: str) -> str:
+        """Robustly extract a JSON array from LLM output."""
+        raw_output = re.sub(r'```json\s*', '', raw_output)
+        raw_output = re.sub(r'```\s*', '', raw_output)
         start = raw_output.find('[')
-        end = raw_output.rfind(']')
+        end   = raw_output.rfind(']')
         if start != -1 and end != -1 and end > start:
-            return raw_output[start:end + 1]
-        if "```json" in raw_output:
-            raw_output = raw_output.split("```json", 1)[1]
-        if "```" in raw_output:
-            raw_output = raw_output.split("```", 1)[0]
+            return raw_output[start:end + 1].strip()
         return raw_output.strip()
 
-    async def _generate_parallel_challenge(self, blueprint: list):
-        """Generate a parallel challenge version of the blueprint with different values/logic."""
+    # ── Step 1: Extract blueprint (Redis-cached) ──────────────────────────────
+
+    async def _extract_blueprint(self, raw_content: str, redis: aioredis.Redis | None) -> list:
+        """Parse the raw paper into a structured blueprint.
+        Cached in Redis — deterministic for a given paper, so safe to store long-term.
+        """
+        cache_key = self._blueprint_key(raw_content)
+
+        if redis:
+            cached = await redis.get(cache_key)
+            if cached:
+                print("DEBUG: Blueprint cache HIT — skipping LLM Step 1.")
+                return json.loads(cached)
+
+        print("DEBUG: Blueprint cache MISS — calling LLM Step 1...")
+        prompt = f"""You are a Precise Academic Parser. Extract the past paper below into a JSON list.
+
+        REQUIRED SCHEMA:
+        [
+          {{
+            "section_title": "string | null",
+            "text": "The FULL text of the question.",
+            "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+            "sub_questions": [{{ "text": "sub-question text", "options": [] }}]
+          }}
+        ]
+
+        MANDATORY FORMATTING RULES — ZERO TOLERANCE:
+        1. DO NOT alter any values, names, or numbers.
+        2. TABLES: Reproduce as a complete Markdown table.
+           - First row = header with | col1 | col2 | col3 |
+           - Second row = separator with | --- | --- | --- |
+           - Then data rows. Include ALL rows. Never truncate.
+        3. CODE: Wrap ALL code in triple backticks with the LANGUAGE TAG.
+           - Java:   ```java ... ```
+           - Python: ```python ... ```
+           - C/C++:  ```c ... ``` or ```cpp ... ```
+           - SQL:    ```sql ... ```
+           - HTML:   ```html ... ```
+           - Generic: ```text ... ``` (never bare ```)
+        4. MCQs: Each option goes as a plain string in the "options" array (no (a)/(b) prefix needed).
+        5. Keep the COMPLETE question context together. Never split a table into rows.
+
+        Content:
+        {raw_content[:100000]}
+        """
+        response = await self.llm.ainvoke(prompt)
+        blueprint = json.loads(self._clean_json(response.content))
+
+        if redis:
+            await redis.set(cache_key, json.dumps(blueprint), ex=BLUEPRINT_TTL)
+            print("DEBUG: Blueprint cached in Redis (30 days).")
+
+        return blueprint
+
+    # ── Step 2: Mutate to a parallel challenge ────────────────────────────────
+
+    async def _mutate_to_challenge(self, blueprint: list) -> list:
+        """Transform the blueprint into a fresh parallel exam. Always called live."""
         blueprint_text = json.dumps(blueprint, indent=1)
-        prompt = f"""You are a university exam paper generator. Create a PARALLEL CHALLENGE version of the provided exam blueprint.
-        
-CORE OBJECTIVE:
-- Generate a NEW exam paper that follows the EXACT SAME STRUCTURE as the input.
-- Change all specific details (numerical values, variable names, logic conditions, scenarios, names).
+        prompt = f"""You are a Creative Academic. Transform this blueprint into a fresh 'Parallel Challenge' exam.
 
-CRITICAL FORMATTING RULES (MANDATORY):
-1. CODE WRAPPING: ALL code (py, html, css, js, java, c++, c, php etc.) MUST be wrapped in triple backticks with the language ID (e.g., ```javascript). 
-   - NEVER use single backticks. 
-   - ANY snippet longer than 3 words that looks like code MUST be in a triple-backtick block.
-2. TABLES: ALL comparison grids or data tables MUST be returned as a standard Markdown table (e.g., | Header | Header |).
-   - If a table is empty or for filling, preserve the headers and empty rows.
-3. STRUCTURE: Return EXACTLY the same number of questions and sub-questions.
+        REQUIRED SCHEMA (identical structure to blueprint):
+        [
+          {{
+            "section_title": "string | null",
+            "text": "NEW question text.",
+            "options": ["NEW Option A", "NEW Option B", "NEW Option C", "NEW Option D"],
+            "sub_questions": [{{ "text": "NEW sub-question text", "options": [] }}]
+          }}
+        ]
 
-JSON FORMATTING:
-- Return ONLY a valid JSON list.
-- All newlines inside strings MUST be \\n
-- All quotes inside strings MUST be \\"
+        MANDATORY FORMATTING RULES — ZERO TOLERANCE:
+        1. Keep the EXACT same structure, section titles, and question count as the blueprint.
+        2. Change ALL specific values: names, numbers, scenarios, logic — make it feel completely fresh.
+        3. TABLES: Output as a complete Markdown table WITH header and | --- | --- | separator row.
+           - Match the same number of columns and rows as the original. Never truncate.
+        4. CODE: ALWAYS wrap in triple backticks WITH language tag:
+           - Java:   ```java ... ```
+           - Python: ```python ... ```
+           - C/C++:  ```c ... ``` or ```cpp ... ```
+           - SQL:    ```sql ... ```
+           - HTML:   ```html ... ```
+           - Generic: ```text ... ```
+        5. MCQ options: plain strings in "options" array, no letter prefix.
+        6. Never leave "text" empty — every question must have meaningful content.
 
-INPUT ({len(blueprint)} questions):
-{blueprint_text}"""
-        
-        print(f"DEBUG: Generating parallel challenge...")
+        Blueprint:
+        {blueprint_text}
+        """
         response = await self.llm.ainvoke(prompt)
         return json.loads(self._clean_json(response.content))
 
-    def _get_extraction_prompt(self, raw_content: str) -> str:
-        return f"""You are an elite academic parser. Convert this university past paper into a structured JSON list.
+    # ── Post-processing ───────────────────────────────────────────────────────
 
-CRITICAL OBJECTIVE: 
-- DO NOT FRAGMENT QUESTIONS. A question with many sub-parts (i, ii, iii) or (a, b, c) MUST be a single top-level object with a 'sub_questions' array.
-- SCAN THE ENTIRE DOCUMENT. If there are 15 questions, extract all 15.
-- ALWAYS include the full context, code, and tables.
-
-FORMATTING RULES:
-- CODE DETECTION: Any text containing keywords like 'var', 'let', 'const', 'public', 'static', 'void', 'int', 'float', 'bool', 'class', 'def', 'import', 'from', 'include', '<html', '<div', 'script', '{{}}', '[]', '()', '=>', '<?php' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID.
-- TABLES: Reconstruct all tables as Markdown tables. If the table is for filling, create an empty Markdown table with headers.
-- SUB-QUESTIONS: Every sub-part MUST contain its COMPLETE text.
-
-JSON SCHEMA:
-[
-  {{
-    "section_title": "string | null",
-    "text": "The main question text. Wrap any code in TRIPLE backticks.",
-    "type": "multiple-choice | short-answer | coding | essay",
-    "options": ["Option A", "Option B", ...],
-    "sub_questions": [
-      {{
-        "text": "Sub-question text with code wrapped in TRIPLE backticks.",
-        "type": "...",
-        "options": [...]
-      }}
+    # Ordered list of (regex-pattern, language-tag) pairs.
+    # First match wins, so more specific patterns come first.
+    _CODE_SIGNALS = [
+        (re.compile(r'<!DOCTYPE|<html[\s>]|<body[\s>]|<head[\s>]', re.I),          'html'),
+        (re.compile(r'<(?:script|style|div|span|form|input|button|a\b|table|ul|li|p|h[1-6])[\s>]', re.I), 'html'),
+        (re.compile(r'\bpublic\s+(?:static\s+)?(?:void|class|int|String|boolean|double)\b'), 'java'),
+        (re.compile(r'\bSystem\.out\.(?:print|println)\s*\('),                      'java'),
+        (re.compile(r'\bdef\s+\w+\s*\(.*\)\s*:'),                                   'python'),
+        (re.compile(r'\bprint\s*\(["\']'),                                           'python'),
+        (re.compile(r'#[\w-]+\s*\{|\.[\w-]+\s*\{|\bflex(?:box)?\b.*\{', re.I),      'css'),
+        (re.compile(r'\b(?:let|const|var)\s+\w+\s*=(?!=)'),                         'javascript'),
+        (re.compile(r'\bconsole\.(?:log|error|warn|info)\s*\('),                    'javascript'),
+        (re.compile(r'document\.(?:getElementById|querySelector|addEventListener)'), 'javascript'),
+        (re.compile(r'\.(?:filter|map|reduce|forEach|find|some|every)\s*\('),       'javascript'),
+        (re.compile(r'\bfunction\s+\w+\s*\(|=>\s*[\{\[]'),                          'javascript'),
+        (re.compile(r'\bSELECT\b.+\bFROM\b', re.I | re.S),                         'sql'),
     ]
-  }}
-]
 
-Past Paper Text:
-{raw_content[:120000]}"""
+    def _auto_wrap_code(self, text: str) -> str:
+        """Safety net: if text contains code-like content without backtick fences,
+        detect the language and wrap the code portion automatically."""
+        if not text or '```' in text:
+            return text
 
-    async def extract_blueprint(self, raw_content: str, force_refresh: bool = False) -> list:
-        """Extracts the structural blueprint from raw past paper text.
-        CACHE DISABLED: Every extraction is now performed fresh by the LLM.
-        """
-        print(f"DEBUG: Extracting blueprint (FRESH - Cache Disabled)...")
-        extract_prompt = self._get_extraction_prompt(raw_content)
-        response = await self.llm.ainvoke(extract_prompt)
-        blueprint = json.loads(self._clean_json(response.content))
-        return blueprint
+        # Find the earliest code signal in the text
+        detected_lang: str | None = None
+        earliest_pos = len(text)
+        for pattern, lang in self._CODE_SIGNALS:
+            m = pattern.search(text)
+            if m and m.start() < earliest_pos:
+                earliest_pos = m.start()
+                detected_lang = lang
 
-    async def generate_from_blueprint(self, blueprint: list) -> list:
-        """Generates a parallel practice paper given a structural blueprint."""
-        data = await self._generate_parallel_challenge(blueprint)
+        if not detected_lang:
+            return text   # No code detected — leave as-is
+
+        # Split narrative from code:
+        # Walk backwards from earliest_pos to find the last clean break point
+        # (newline, '. ', or ': ') so the narrative stays above the fence.
+        before = text[:earliest_pos]
+        split_pos = 0
+        for sep in (before.rfind('\n'), before.rfind('. '), before.rfind(': ')):
+            if sep > split_pos:
+                split_pos = sep + 1  # +1 to skip the separator character itself
+
+        narrative = text[:split_pos].strip()
+        code_body  = text[split_pos:].strip()
+
+        if not code_body:
+            return text
+
+        if narrative:
+            return f"{narrative}\n\n```{detected_lang}\n{code_body}\n```"
+        else:
+            return f"```{detected_lang}\n{code_body}\n```"
+
+    def _normalise(self, data: list) -> list:
+        """Fill missing fields and auto-fence any embedded code blocks."""
         for q in data:
+            if not q.get('text'):    q['text']    = "Question text missing."
+            q['text'] = self._auto_wrap_code(q['text'])
+            if not q.get('options'): q['options'] = []
             if 'type' not in q or not q['type']:
-                q['type'] = 'multiple-choice' if (q.get('options') and len(q['options']) > 0) else 'short-answer'
-            if 'options' not in q: q['options'] = []
-            if 'sub_questions' in q:
-                for sq in q['sub_questions']:
-                    if 'type' not in sq or not sq['type']:
-                        sq['type'] = 'multiple-choice' if (sq.get('options') and len(sq['options']) > 0) else 'short-answer'
-                    if 'options' not in sq: sq['options'] = []
+                q['type'] = 'multiple-choice' if q.get('options') else 'short-answer'
+            for sq in q.get('sub_questions', []):
+                if not sq.get('text'):    sq['text']    = "Sub-question text missing."
+                sq['text'] = self._auto_wrap_code(sq['text'])
+                if not sq.get('options'): sq['options'] = []
+                if 'type' not in sq or not sq['type']:
+                    sq['type'] = 'multiple-choice' if sq.get('options') else 'short-answer'
         return data
 
-    async def generate(self, raw_content: str, generation_count: int = 0, force_refresh: bool = False):
-        """Main entry point for generating a practice paper."""
-        blueprint = await self.extract_blueprint(raw_content, force_refresh=force_refresh)
-        return await self.generate_from_blueprint(blueprint)
+    # ── Public entry point ────────────────────────────────────────────────────
+
+    async def generate(
+        self,
+        raw_content: str,
+        generation_count: int = 0,
+        force_refresh: bool = False,
+        attempt: int = 1,
+    ) -> list:
+        """
+        Two-step generation with two layers of Redis caching:
+
+          Layer 1 — Blueprint cache (30 days, deterministic):
+            The extraction of the raw paper into a structured blueprint never changes
+            for the same paper. Cache hit skips the first LLM call entirely.
+
+          Layer 2 — Full exam result cache (24 h, per generation_count slot):
+            Stores the final parallel exam. Cache hit returns instantly.
+            force_refresh=True bypasses this layer while still benefiting from
+            the fast blueprint cache, so a new parallel exam is generated quickly.
+        """
+        print(f"DEBUG: ExamGenerator.generate() attempt={attempt}, force_refresh={force_refresh}")
+        redis = await _get_redis()
+
+        # ── Layer 2: full exam result cache ──────────────────────────────────
+        result_key = self._result_key(raw_content, generation_count)
+        if not force_refresh and redis:
+            cached_result = await redis.get(result_key)
+            if cached_result:
+                print("DEBUG: Full exam cache HIT — returning instantly.")
+                return json.loads(cached_result)
+
+        try:
+            # ── Step 1: extract blueprint (Layer 1 cached) ────────────────────
+            blueprint = await self._extract_blueprint(raw_content, redis)
+
+            # ── Step 2: mutate to parallel challenge (always live) ─────────────
+            data = await self._mutate_to_challenge(blueprint)
+            data = self._normalise(data)
+
+            # ── Save to Layer 2 cache ─────────────────────────────────────────
+            if redis:
+                await redis.set(result_key, json.dumps(data), ex=EXAM_RESULT_TTL)
+
+            return data
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"WARN: Generation failed, retrying... ({e})")
+                return await self.generate(raw_content, generation_count, force_refresh, attempt + 1)
+            raise e

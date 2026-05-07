@@ -80,13 +80,11 @@ export default function BookCorrelation() {
                 <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner"></div>
                 <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-inner"></div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse"></div>
-                <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{language || 'source code'}</span>
-              </div>
+              {/* Pulse dot only — no language label */}
+              <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse"></div>
             </div>
-            <div className="p-6 overflow-x-auto">
-              <pre className="m-0 text-[#E0E7FF] leading-relaxed">
+            <div className="p-6 max-h-[600px] overflow-y-auto">
+              <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
                 <code className={className} {...props}>
                   {children}
                 </code>
@@ -99,7 +97,7 @@ export default function BookCorrelation() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         
         {/* Back Button */}
