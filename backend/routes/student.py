@@ -24,7 +24,7 @@ async def display_exam(request: DisplayExamRequest):
     if not past_paper:
         raise HTTPException(status_code=404, detail="Paper not found in MongoDB.")
     
-    # 2. Trigger AI Generation
+    # 2. Trigger AI Generation (blueprint is Redis-cached on second+ calls)
     exam_generator = get_exam_generator()
     cache_key = f"{request.course_id}:{request.instructor_id}:{request.paper_type}"
     data = await exam_generator.generate(past_paper["raw_content"], request.generation_count, cache_key)
@@ -36,11 +36,11 @@ async def get_book_patterns(course_id: str, topic_name: str, extractor = Depends
     paper = await db.past_papers.find_one({"course_id": course_id})
     
     if not paper:
-        search_queries = [topic_name]
+        search_queries = [{"text": topic_name, "options": []}]
     else:
-        # 2. Extract specific topic questions
-        search_queries = extractor.get_questions(paper["raw_content"], topic_name)
+        # 2. Extract specific topic questions (now async)
+        search_queries = await extractor.get_questions(paper["raw_content"], topic_name)
 
-    # 3. Match to Pinecone
-    recommendations = recommender.get_book_recommendations(search_queries)
-    return recommendations
+    # 3. Match to Pinecone + LLM in parallel (now async)
+    recommendations = await recommender.get_book_recommendations(search_queries)
+    return recommendations

@@ -1,9 +1,33 @@
 import json
 import re
 import asyncio
+import hashlib
+import os
+import redis.asyncio as aioredis
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
-import os
+
+# --- Redis client (lazy-initialized, module-level singleton) ---
+_redis_client: aioredis.Redis | None = None
+
+async def _get_redis() -> aioredis.Redis | None:
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return None
+    try:
+        _redis_client = aioredis.from_url(redis_url, decode_responses=True)
+        await _redis_client.ping()  # type: ignore[misc]  — redis.asyncio stubs incorrectly type ping() as bool
+        print("INFO: Redis connected (ExamGenerator)")
+    except Exception as e:
+        print(f"WARN: Redis unavailable — skipping blueprint cache. ({e})")
+        _redis_client = None
+    return _redis_client
+
+BLUEPRINT_TTL = 60 * 60 * 24 * 30  # 30 days — blueprints are stable
+
 
 class ExamGeneratorService:
     def __init__(self, llm=None, api_key: str | None = None, model_name: str | None = None):
@@ -143,11 +167,32 @@ Past Paper Text:
 {raw_content[:100000]}"""
 
     async def extract_blueprint(self, raw_content: str) -> list:
-        """Extracts the structural blueprint from raw past paper text."""
+        """Extracts the structural blueprint from raw past paper text.
+        
+        Result is cached in Redis (keyed by SHA-256 of content) for 30 days.
+        Second+ requests for the same paper skip this expensive LLM call entirely.
+        """
+        cache_key = "alphalo:blueprint:" + hashlib.sha256(raw_content.encode()).hexdigest()
+        redis = await _get_redis()
+
+        # --- Cache hit ---
+        if redis:
+            cached = await redis.get(cache_key)
+            if cached:
+                print(f"DEBUG: Blueprint cache HIT — skipping extraction LLM call.")
+                return json.loads(cached)
+
+        # --- Cache miss: call LLM ---
         print(f"DEBUG: Extracting structural blueprint from {len(raw_content)} chars...")
         extract_prompt = self._get_extraction_prompt(raw_content)
         response = await self.llm.ainvoke(extract_prompt)
         blueprint = json.loads(self._clean_json(response.content))
+
+        # --- Store in cache ---
+        if redis:
+            await redis.set(cache_key, json.dumps(blueprint), ex=BLUEPRINT_TTL)
+            print(f"DEBUG: Blueprint cached ({cache_key[:30]}...).")
+
         return blueprint
 
     async def generate_from_blueprint(self, blueprint: list) -> list:
@@ -173,7 +218,7 @@ Past Paper Text:
     async def generate(self, raw_content: str, generation_count: int = 0, cache_key: str = ""):
         """
         Main entry point for generating a practice paper.
-        If raw_content is provided, it performs both extraction and mutation.
+        Blueprint extraction is Redis-cached; only the mutation (parallel challenge) is always fresh.
         """
         blueprint = await self.extract_blueprint(raw_content)
         return await self.generate_from_blueprint(blueprint)

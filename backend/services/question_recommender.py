@@ -1,12 +1,37 @@
-from langchain_classic.chains import RetrievalQA
+import asyncio
+import hashlib
+import json
+import os
+import redis.asyncio as aioredis
 from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
-import os
+
+# --- Redis client (lazy-initialized, shared across requests) ---
+_redis_client: aioredis.Redis | None = None
+
+async def _get_redis() -> aioredis.Redis | None:
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return None
+    try:
+        _redis_client = aioredis.from_url(redis_url, decode_responses=True)
+        await _redis_client.ping()  # type: ignore[misc]  — redis.asyncio stubs incorrectly type ping() as bool
+        print("INFO: Redis connected (QuestionRecommender)")
+    except Exception as e:
+        print(f"WARN: Redis unavailable — skipping cache. ({e})")
+        _redis_client = None
+    return _redis_client
+
+RECOMMENDATION_TTL = 60 * 60 * 24 * 7  # 7 days
+
 
 class QuestionRecommender:
-    def __init__(self, llm=None, api_key: str | None = None, model_name: str | None = None):   
+    def __init__(self, llm=None, api_key: str | None = None, model_name: str | None = None):
         # Setup the models
         self.embedding_model = HuggingFaceEmbeddings(
             model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
@@ -26,36 +51,61 @@ class QuestionRecommender:
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
                 )
 
-    def get_book_recommendations(self, exam_questions):
-        # Connect to index
-        vector_store = PineconeVectorStore(
-            index_name="alphalo-index", 
-            embedding=self.embedding_model,
-            text_key="text" 
-        )
+    def _cache_key(self, q_text: str) -> str:
+        """Stable SHA-256 cache key for a question string."""
+        return "alphalo:rec:" + hashlib.sha256(q_text.encode()).hexdigest()
 
-        all_recommendations = []
-
-        for q_item in exam_questions:
-            # Handle both old string format and new dict format
-            if isinstance(q_item, dict):
-                q_text = q_item.get('text', '')
-                q_options = " ".join(q_item.get('options', []))
-                full_q_context = f"{q_text} {q_options}"
+    async def _process_single_question(
+        self,
+        q_item,
+        vector_store: PineconeVectorStore,
+        redis: aioredis.Redis | None,
+    ) -> dict:
+        """Run Pinecone lookup + LLM for one question (fully async, cached)."""
+        # Normalise input
+        if isinstance(q_item, dict):
+            q_text = q_item.get("text", "")
+            q_options = " ".join(q_item.get("options", []))
+            parent_context = q_item.get("parent_context", None)
+            # Build full context: prepend the parent question if available so
+            # the LLM always sees the COMPLETE question (e.g. the table header +
+            # all its rows), not just an isolated row or sub-item.
+            if parent_context:
+                full_q_context = f"{parent_context}\n\n{q_text} {q_options}".strip()
             else:
-                full_q_context = q_item
-                q_item = {"text": q_item, "options": []}
+                full_q_context = f"{q_text} {q_options}".strip()
+        else:
+            full_q_context = q_item
+            parent_context = None
+            q_item = {"text": q_item, "options": [], "parent_context": None}
 
-            # UNIVERSAL ACT: Create a subject-agnostic, exercise-biased search query
-            search_query = f"{full_q_context} worked example practice problem exercise review question self-test chapter end"
+        cache_key = self._cache_key(full_q_context)
+
+        # --- Cache hit? ---
+        if redis:
+            cached = await redis.get(cache_key)
+            if cached:
+                print(f"DEBUG: Cache HIT for recommendation ({cache_key[:20]}...)")
+                return {"original_question": q_item, "recommendation": cached}
+
+        # --- Pinecone similarity search (run in thread pool — sync SDK) ---
+        search_query = (
+            f"{full_q_context} worked example practice problem "
+            "exercise review question self-test chapter end"
+        )
+        loop = asyncio.get_event_loop()
+        docs = await loop.run_in_executor(
+            None, lambda: vector_store.similarity_search(search_query, k=17)
+        )
+        context = "\n\n".join([d.page_content for d in docs])
+
+        instruction = f"""
+            You are a Universal Academic Specialist.
             
-            # Retrieve the top 17 most relevant chunks
-            docs = vector_store.similarity_search(search_query, k=17)
-            context = "\n\n".join([d.page_content for d in docs])
-
-            instruction = f"""
-            You are a Universal Academic Specialist. 
-            Exam Context (The Student's Target): "{full_q_context}"
+            FULL EXAM QUESTION (complete context — including all parts, rows, and sub-questions):
+            \"\"\"
+            {full_q_context}
+            \"\"\"
             
             Textbook Context (Available Resources):
             ---
@@ -63,11 +113,14 @@ class QuestionRecommender:
             ---
 
             TASK:
-            1. Scour the Textbook Context for a matching 'Worked Example', 'Practice Problem', 'Check Point', or 'Chapter-End Exercise' that aligns with the logic, difficulty, and theme of the Exam Context.
-            2. If you find a direct or highly similar match, reproduce it FULLY under: "**📖 MATCHING EXERCISE**".
-            3. MANDATORY: State the Page Number or Section. If not explicitly found, estimate based on the context or state "Page: [See Chapter Reference]".
-            4. If no literal exercise exists, design a high-quality "Mastery Challenge" that perfectly bridges the theory in the context to the student's exam target under: "**🛠️ MASTERY CHALLENGE**".
-            5. Provide a 2-sentence strategic summary of the core academic principle under: "**💡 KEY CONCEPT**".
+            1. Understand the COMPLETE question above in its entirety before generating a response.
+               - If the question contains a table (e.g., compare features across multiple rows), treat ALL rows as part of one unified question.
+               - Do NOT focus on individual rows or sub-items in isolation; the whole question is the target.
+            2. Scour the Textbook Context for a matching 'Worked Example', 'Practice Problem', 'Check Point', or 'Chapter-End Exercise' that aligns with the logic, difficulty, and theme of the full question.
+            3. If you find a direct or highly similar match, reproduce it FULLY under: "**📖 MATCHING EXERCISE**".
+            4. MANDATORY: State the Page Number or Section. If not explicitly found, estimate based on the context or state "Page: [See Chapter Reference]".
+            5. If no literal exercise exists, design a high-quality "Mastery Challenge" that addresses the FULL scope of the question (all rows/parts) under: "**🛠️ MASTERY CHALLENGE**".
+            6. Provide a 2-sentence strategic summary of the core academic principle under: "**💡 KEY CONCEPT**".
             
             FORMATTING RULES:
             - Use professional Markdown.
@@ -76,11 +129,32 @@ class QuestionRecommender:
             - Ensure headers are bold.
             - Be concise, formal, and academically precise.
             """
-            
-            response = self.llm.invoke(instruction)
-            all_recommendations.append({
-                "original_question": q_item,
-                "recommendation": response.content
-            })
 
-        return all_recommendations
+        # --- Async LLM call ---
+        response = await self.llm.ainvoke(instruction)
+        result = response.content
+
+        # --- Store in cache ---
+        if redis:
+            await redis.set(cache_key, result, ex=RECOMMENDATION_TTL)
+
+        return {"original_question": q_item, "recommendation": result}
+
+    async def get_book_recommendations(self, exam_questions: list) -> list:
+        """Fetch recommendations for all questions in PARALLEL (huge latency win)."""
+        redis = await _get_redis()
+
+        # Shared Pinecone vector store (one connection, reused for all questions)
+        vector_store = PineconeVectorStore(
+            index_name="alphalo-index",
+            embedding=self.embedding_model,
+            text_key="text",
+        )
+
+        print(f"DEBUG: Fetching {len(exam_questions)} recommendations in parallel...")
+        tasks = [
+            self._process_single_question(q, vector_store, redis)
+            for q in exam_questions
+        ]
+        results = await asyncio.gather(*tasks)
+        return list(results)

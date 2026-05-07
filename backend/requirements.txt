@@ -21,3 +21,4 @@ openai
 langchain-classic
 motor
 dnspython
+redis[asyncio]

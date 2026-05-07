@@ -174,6 +174,13 @@ export default function BookCorrelation() {
                   </div>
                   
                   <div className="space-y-6">
+                    {/* Parent context badge (e.g. "2. Short Questions – 28 marks") */}
+                    {qObj?.parent_context && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#7C3AED]/10 border border-[#7C3AED]/20">
+                        <span className="text-[10px] text-[#A78BFA] font-black uppercase tracking-widest">Context</span>
+                        <span className="text-xs text-gray-400 font-medium">{qObj.parent_context}</span>
+                      </div>
+                    )}
                     <div className="text-gray-200 text-lg leading-relaxed font-medium">
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
                         {questionText}
