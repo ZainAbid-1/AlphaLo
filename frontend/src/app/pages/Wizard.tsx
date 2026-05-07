@@ -24,7 +24,7 @@ export default function Wizard() {
   }, []);
 
   const filteredUniversities = universities.filter(uni =>
-    uni.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (uni.name || "").toLowerCase().includes((searchQuery || "").toLowerCase())
   );
 
   const availableCourses = courses; // Fetched specific for selected uni below

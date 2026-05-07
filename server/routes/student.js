@@ -11,7 +11,7 @@ router.get('/universities', async (req, res) => {
         
         const formattedData = data.map(u => ({
             id: u.id,
-            name: u.name,
+            name: u.name || "Unknown University",
             logo: u.name ? u.name[0] : 'U'
         }));
         res.json(formattedData);
@@ -64,7 +64,7 @@ router.get('/roadmap/:course_id', async (req, res) => {
     try {
         const { course_id } = req.params;
         const db = await getDb();
-        const data = await db.collection('syllabus_topics').find({ course_id }).toArray();
+        const data = await db.collection('syllabus_topics').find({ course_id }).sort({ week_number: 1 }).toArray();
 
         const formattedData = data.map(t => ({
             id: t.id,
