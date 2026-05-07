@@ -73,8 +73,11 @@ CORE OBJECTIVE:
 - Change all specific details (numerical values, variable names, logic conditions, scenarios, names).
 
 CRITICAL FORMATTING RULES (MANDATORY):
-1. CODE DETECTION: Any text containing keywords like 'var', 'let', 'const', 'public', 'static', 'void', 'int', 'float', 'bool', 'class', 'def', 'import', 'from', 'include', '<html', '<div', 'script', '{{}}', '[]', '()', '=>' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID (e.g., ```javascript, ```python, ```html, ```cpp).
-2. TABLES: Any tabular data MUST be returned as a standard Markdown table (e.g., | Header | Header |). This is NON-NEGOTIABLE.
+1. CODE WRAPPING: ALL code (py, html, css, js, java, c++, c, php etc.) MUST be wrapped in triple backticks with the language ID (e.g., ```javascript). 
+   - NEVER use single backticks. 
+   - ANY snippet longer than 3 words that looks like code MUST be in a triple-backtick block.
+2. TABLES: ALL comparison grids or data tables MUST be returned as a standard Markdown table (e.g., | Header | Header |).
+   - If a table is empty or for filling, preserve the headers and empty rows.
 3. STRUCTURE: Return EXACTLY the same number of questions and sub-questions.
 
 JSON FORMATTING:
@@ -94,24 +97,24 @@ INPUT ({len(blueprint)} questions):
 
 CRITICAL OBJECTIVE: 
 - DO NOT FRAGMENT QUESTIONS. A question with many sub-parts (i, ii, iii) or (a, b, c) MUST be a single top-level object with a 'sub_questions' array.
-- SCAN THE ENTIRE DOCUMENT. If there are 10 questions, extract all 10.
+- SCAN THE ENTIRE DOCUMENT. If there are 15 questions, extract all 15.
 - ALWAYS include the full context, code, and tables.
 
 FORMATTING RULES:
-- CODE: Wrap any code/markup in triple backticks (```javascript, ```html, etc.).
-- TABLES: Reconstruct all tables as Markdown tables.
+- CODE DETECTION: Any text containing keywords like 'var', 'let', 'const', 'public', 'static', 'void', 'int', 'float', 'bool', 'class', 'def', 'import', 'from', 'include', '<html', '<div', 'script', '{{}}', '[]', '()', '=>', '<?php' or any programming/markup syntax MUST be wrapped in triple backticks with the language ID.
+- TABLES: Reconstruct all tables as Markdown tables. If the table is for filling, create an empty Markdown table with headers.
 - SUB-QUESTIONS: Every sub-part MUST contain its COMPLETE text.
 
 JSON SCHEMA:
 [
   {{
     "section_title": "string | null",
-    "text": "The main question text. Wrap any code in backticks.",
+    "text": "The main question text. Wrap any code in TRIPLE backticks.",
     "type": "multiple-choice | short-answer | coding | essay",
     "options": ["Option A", "Option B", ...],
     "sub_questions": [
       {{
-        "text": "Sub-question text with code wrapped in backticks.",
+        "text": "Sub-question text with code wrapped in TRIPLE backticks.",
         "type": "...",
         "options": [...]
       }}
@@ -123,23 +126,13 @@ Past Paper Text:
 {raw_content[:120000]}"""
 
     async def extract_blueprint(self, raw_content: str, force_refresh: bool = False) -> list:
-        """Extracts the structural blueprint from raw past paper text."""
-        cache_key = "alphalo:blueprint:v3:" + hashlib.sha256(raw_content.encode()).hexdigest()
-        redis = await _get_redis()
-
-        if redis and not force_refresh:
-            cached = await redis.get(cache_key)
-            if cached:
-                print(f"DEBUG: Blueprint cache HIT (v3).")
-                return json.loads(cached)
-
-        print(f"DEBUG: Extracting blueprint (v3)...")
+        """Extracts the structural blueprint from raw past paper text.
+        CACHE DISABLED: Every extraction is now performed fresh by the LLM.
+        """
+        print(f"DEBUG: Extracting blueprint (FRESH - Cache Disabled)...")
         extract_prompt = self._get_extraction_prompt(raw_content)
         response = await self.llm.ainvoke(extract_prompt)
         blueprint = json.loads(self._clean_json(response.content))
-
-        if redis:
-            await redis.set(cache_key, json.dumps(blueprint), ex=BLUEPRINT_TTL)
         return blueprint
 
     async def generate_from_blueprint(self, blueprint: list) -> list:
