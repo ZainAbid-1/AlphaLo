@@ -87,7 +87,10 @@ router.post('/upload-textbook/:course_id', upload.single('file'), async (req, re
 
         const response = await axios.post(`${pythonServiceUrl}/api/admin/upload-textbook/${course_id}`, formData, {
             params: { title, instructor_id },
-            headers: { ...formData.getHeaders() }
+            headers: { 
+                ...formData.getHeaders(),
+                'Authorization': req.headers.authorization
+            }
         });
 
         // Cleanup temp file
@@ -115,7 +118,10 @@ router.post('/upload-past-paper/:course_id', upload.single('file'), async (req, 
 
         const response = await axios.post(`${pythonServiceUrl}/api/admin/upload-past-paper/${course_id}`, formData, {
             params: { title, instructor_id, paper_type },
-            headers: { ...formData.getHeaders() }
+            headers: { 
+                ...formData.getHeaders(),
+                'Authorization': req.headers.authorization
+            }
         });
 
         // Cleanup temp file
