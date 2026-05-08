@@ -22,6 +22,7 @@ async def process_textbook_task(temp_file_path: str, course_id: str, title: str,
             "course_id": course_id,
             "instructor_id": instructor_id,
             "title": title,
+            "source": temp_file_path,   # Pinecone metadata key — needed for cleanup
             "chunks_count": len(chunks),
             "processed_at": datetime.utcnow()
         })
