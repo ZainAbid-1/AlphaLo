@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2, User, LogIn, ShieldAlert } from 'lucide-react';
+import { Database, UploadCloud, Plus, Book, FileText, School, Library, ArrowLeft, CheckCircle2, User, LogIn, ShieldAlert, Sparkles } from 'lucide-react';
 import { api } from '../../services/api';
 import { supabase } from '../../services/supabaseClient';
   
@@ -54,6 +54,14 @@ export default function AdminDashboard() {
   }); 
   const[selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const [resourceData, setResourceData] = useState({ 
+  course_id: '', 
+  instructor_id: '', 
+  title: '', 
+  url: '', 
+  topic: '' 
+});
 
   // --- API HANDLERS (Connects to your FastAPI admin.py) ---
   const showStatus = (type: 'success' | 'error', text: string) => {
@@ -121,6 +129,28 @@ export default function AdminDashboard() {
         console.error(error);
     }
   };
+
+  const handleAddResource = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+      // YouTube Embed Logic helper
+      let finalUrl = resourceData.url;
+      if (finalUrl.includes("watch?v=")) {
+        finalUrl = finalUrl.replace("watch?v=", "embed/");
+      }
+
+      const params = new URLSearchParams({
+        ...resourceData,
+        url: finalUrl
+      }).toString();
+      
+      const response = await api.post(`/admin/resource?${params}`); 
+      showStatus('success', `Resource "${resourceData.title}" added!`);
+      setResourceData({ course_id: '', instructor_id: '', title: '', url: '', topic: '' });
+  } catch (error: any) {
+      showStatus('error', `Failed to add resource. ${error.response?.data?.detail || ''}`);
+  }
+};
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,6 +418,36 @@ export default function AdminDashboard() {
                 </div>
                 <button type="submit" className="w-full py-2 bg-white/10 hover:bg-blue-500 hover:text-white text-white rounded-lg transition-colors flex justify-center items-center gap-2">
                   <Plus className="w-4 h-4" /> Save Instructor
+                </button>
+              </form>
+            </div>
+            
+            {/* Add Helping Resource */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 h-fit">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-400" /> Add Helping Resource
+              </h2>
+              <form onSubmit={handleAddResource} className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" required placeholder="Course ID" value={resourceData.course_id} 
+                    onChange={e => setResourceData({...resourceData, course_id: e.target.value})}
+                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-emerald-400 outline-none" />
+                  <input type="text" required placeholder="Instructor ID" value={resourceData.instructor_id} 
+                    onChange={e => setResourceData({...resourceData, instructor_id: e.target.value})}
+                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-emerald-400 outline-none" />
+                </div>
+                <input type="text" required placeholder="Video Title" value={resourceData.title} 
+                  onChange={e => setResourceData({...resourceData, title: e.target.value})}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-emerald-400 outline-none" />
+                <input type="text" required placeholder="YouTube URL" value={resourceData.url} 
+                  onChange={e => setResourceData({...resourceData, url: e.target.value})}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-emerald-400 outline-none" />
+                <input type="text" required placeholder="Topic (e.g. CSS Layouts)" value={resourceData.topic} 
+                  onChange={e => setResourceData({...resourceData, topic: e.target.value})}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-emerald-400 outline-none" />
+                
+                <button type="submit" className="w-full py-2 bg-white/10 hover:bg-emerald-500 text-white rounded-lg transition-colors flex justify-center items-center gap-2">
+                  <Plus className="w-4 h-4" /> Save Resource
                 </button>
               </form>
             </div>

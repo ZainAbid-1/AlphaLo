@@ -134,4 +134,22 @@ router.post('/upload-past-paper/:course_id', upload.single('file'), async (req, 
     }
 });
 
+router.post('/resource', isAdmin, async (req, res) => {
+    const { course_id, instructor_id, title, url, topic } = req.query;
+    try {
+        const db = await getDb();
+        await db.collection('resources').insertOne({
+            course_id,
+            instructor_id,
+            title,
+            url,
+            topic,
+            created_at: new Date()
+        });
+        res.json({ status: 'Resource added successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
