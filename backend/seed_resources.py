@@ -12,18 +12,60 @@ async def seed_resources():
     # Example resources for Web Technologies
     helping_material = [
         {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "HTML + CSS One Shot",
+            "url": "https://www.youtube.com/embed/HGTJBPNC-Gw?si=Hy_accwq3r75cA9M",
+            "topic": "HTML + CSS One Shot"
+        },
+        {
             "course_id": "cs-webtch",
             "instructor_id": "inst-naima", 
-            "title": "Mastering CSS Grid",
-            "url": "https://www.youtube.com/embed/jV8B24wq5zs", # Must be /embed/ link
-            "topic": "CSS Layouts"
+            "title": "Functions & Methods",
+            "url": "https://www.youtube.com/embed/P0XMXqDGttU?si=XkjLD1qj1wdCo8Vr", 
+            "topic": "Functions and Methods"
         },
         {
             "course_id": "cs-webtech",
             "instructor_id": "inst-naima", 
-            "title": "React Hooks Explained",
-            "url": "https://www.youtube.com/embed/TNhaISOUy6Q",
-            "topic": "Frontend Frameworks"
+            "title": "DOM",
+            "url": "https://www.youtube.com/embed/7zcXPCt8Ck0?si=CZ3qVsxZDr4vFKGq",
+            "topic": "DOM Manipulation"
+        },
+        {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "DOM",
+            "url": "https://www.youtube.com/embed/fXAGTOZ25H8?si=OrI0dWNZe-B3NflC",
+            "topic": "DOM Manipulation"
+        },
+        {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "Event Handling",
+            "url": "https://www.youtube.com/embed/_i-uLJAh79U?si=mUaZHeqkxhoU1Jax",
+            "topic": "Event Handling"
+        },
+        {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "Classes & Objects in JavaScript",
+            "url": "https://www.youtube.com/embed/N-O4w6PynGY?si=iMShvkdSljHfuwq4",
+            "topic": "Classes and Objects in JavaScript"
+        },
+        {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "Callbacks, Promises & Async-Await",
+            "url": "https://www.youtube.com/embed/d3jXofmQm44?si=xbkPWI0JP56u_rWR",
+            "topic": "Callbacks, Promises & Async-Await"
+        },
+        {
+            "course_id": "cs-webtech",
+            "instructor_id": "inst-naima", 
+            "title": "Fetch API in JavaScript",
+            "url": "https://www.youtube.com/embed/d3jXofmQm44?si=xbkPWI0JP56u_rWR",
+            "topic": "Fetch API in JavaScript"
         }
     ]
 
