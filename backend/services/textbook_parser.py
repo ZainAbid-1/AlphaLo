@@ -2,7 +2,7 @@
 from langchain_pinecone import PineconeVectorStore # pyright: ignore[reportMissingImports]
 from langchain_community.document_loaders import PyMuPDFLoader # pyright: ignore[reportMissingImports]
 from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 import logging
 import re
 
@@ -20,10 +20,19 @@ _HEADING_RE = re.compile(
 
 class TextbookIngestor:
     def __init__(self):
-        # initialize the models
-        self.embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
-        )
+        # Initialize as None to support lazy loading
+        self._embedding_model = None
+
+    @property
+    def embedding_model(self):
+        """Lazy loader for the embedding model to speed up server startup."""
+        if self._embedding_model is None:
+            from langchain_huggingface import HuggingFaceEmbeddings
+            print("INFO: Initializing HuggingFace embedding model...")
+            self._embedding_model = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
+            )
+        return self._embedding_model
 
     # ------------------------------------------------------------------
     # Internal helpers
