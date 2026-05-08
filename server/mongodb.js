@@ -2,6 +2,7 @@ const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
 const url = process.env.MONGODB_URL;
+console.log(url);
 const client = new MongoClient(url);
 
 const dbName = 'alphalo_db';
