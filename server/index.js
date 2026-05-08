@@ -4,6 +4,13 @@ require('dotenv').config({ path: '../.env' });
 
 const studentRoutes = require('./routes/student');
 const adminRoutes = require('./routes/admin');
+const mongoose = require('mongoose');
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URL)
+    .then(() => console.log('✅ Connected successfully to MongoDB Atlas via Mongoose'))
+    .catch((err) => console.error('❌ MongoDB connection error:', err));
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
