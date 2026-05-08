@@ -134,10 +134,11 @@ router.post('/upload-past-paper/:course_id', upload.single('file'), async (req, 
     }
 });
 
-router.post('/resource', isAdmin, async (req, res) => {
-    const { course_id, instructor_id, title, url, topic } = req.query;
+router.post('/resource', async (req, res) => {
     try {
+        const { course_id, instructor_id, title, url, topic } = req.query;
         const db = await getDb();
+        
         await db.collection('resources').insertOne({
             course_id,
             instructor_id,
@@ -146,10 +147,11 @@ router.post('/resource', isAdmin, async (req, res) => {
             topic,
             created_at: new Date()
         });
-        res.json({ status: 'Resource added successfully' });
+
+        res.json({ status: 'success', message: 'Resource added successfully' });
     } catch (error) {
+        console.error("Error saving resource:", error);
         res.status(500).json({ error: error.message });
     }
 });
-
 module.exports = router;
