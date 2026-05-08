@@ -6,6 +6,6 @@ const examPatternSchema = new mongoose.Schema({
     frequency: Number,
     description: String,
     examples: [String]
-}, { timestamps: true });
+}, { timestamps: true, collection: 'exam_patterns' });
 
 module.exports = mongoose.model('ExamPattern', examPatternSchema);

@@ -7,6 +7,6 @@ const syllabusTopicSchema = new mongoose.Schema({
     topic: { type: String, required: true },
     ai_pattern_summary: String,
     complexity: String
-}, { timestamps: true });
+}, { timestamps: true, collection: 'syllabus_topics' });
 
 module.exports = mongoose.model('SyllabusTopic', syllabusTopicSchema);

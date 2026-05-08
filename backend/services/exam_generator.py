@@ -137,37 +137,52 @@ class ExamGeneratorService:
     async def _mutate_to_challenge(self, blueprint: list) -> list:
         """Transform the blueprint into a fresh parallel exam. Always called live."""
         blueprint_text = json.dumps(blueprint, indent=1)
-        prompt = f"""You are a Creative Academic. Transform this blueprint into a fresh 'Parallel Challenge' exam.
+        prompt = f"""You are a Master Academic Transformer. 
+        Your task is to transform this blueprint into a "Parallel Mastery Challenge". 
+        The objective is to test the EXACT same academic concept but with a COMPLETELY DIFFERENT semantic structure to ensure 100% privacy and copyright protection of the source paper.
+
+        DEEP SEMANTIC MUTATION RULES:
+        - CONCEPT-LED DESIGN: Identify the core academic concept (e.g., 'Polymorphism', 'SQL JOINs', 'Memory management'). Build a COMPLETELY NEW question from scratch around this concept.
+        - SCENARIO RE-ENGINEERING: If the original is a theory question, make the new one a practical case study. If it's already a case study, create a totally different industry/domain scenario.
+        - LOGIC INVERSION: Do not just change numbers. If the original asks to 'Find the error', the new one might ask to 'Predict the output' or 'Identify the most efficient fix' for a different code snippet that tests the SAME concept.
+        - ZERO WORD OVERLAP: Avoid using the same sentence structure, phrasing, or narrative flow as the blueprint.
+        - APPROXIMATE EQUIVALENCE: Ensure a student who can solve the original can solve this, but would not recognize it as the same question.
 
         REQUIRED SCHEMA (identical structure to blueprint):
         [
           {{
             "section_title": "string | null",
-            "text": "NEW question text.",
-            "options": ["NEW Option A", "NEW Option B", "NEW Option C", "NEW Option D"],
-            "sub_questions": [{{ "text": "NEW sub-question text", "options": [] }}]
+            "text": "DEEPLY MUTATED, ORIGINAL question text.",
+            "options": ["ORIGINAL Option A", "ORIGINAL Option B", "ORIGINAL Option C", "ORIGINAL Option D"],
+            "sub_questions": [{{ "text": "ORIGINAL mutated sub-question text", "options": [] }}]
           }}
         ]
 
         MANDATORY FORMATTING RULES — ZERO TOLERANCE:
         1. Keep the EXACT same structure, section titles, and question count as the blueprint.
-        2. Change ALL specific values: names, numbers, scenarios, logic — make it feel completely fresh.
-        3. TABLES: Output as a complete Markdown table WITH header and | --- | --- | separator row.
+        2. TABLES: Output as a complete Markdown table WITH header and | --- | --- | separator row.
            - Match the same number of columns and rows as the original. Never truncate.
-        4. CODE: ALWAYS wrap in triple backticks WITH language tag:
+        3. CODE: ALWAYS wrap in triple backticks WITH language tag:
            - Java:   ```java ... ```
            - Python: ```python ... ```
            - C/C++:  ```c ... ``` or ```cpp ... ```
            - SQL:    ```sql ... ```
            - HTML:   ```html ... ```
            - Generic: ```text ... ```
-        5. MCQ options: plain strings in "options" array, no letter prefix.
-        6. Never leave "text" empty — every question must have meaningful content.
+        4. MCQ options: plain strings in "options" array, no letter prefix.
+        5. Never leave "text" empty — every question must have meaningful content.
 
         Blueprint:
         {blueprint_text}
         """
-        response = await self.llm.ainvoke(prompt)
+        
+        # Use a higher temperature for the mutation step to ensure originality and avoid verbatim copying.
+        if hasattr(self.llm, "bind"):
+            creative_llm = self.llm.bind(temperature=0.7)
+            response = await creative_llm.ainvoke(prompt)
+        else:
+            response = await self.llm.ainvoke(prompt)
+            
         return json.loads(self._clean_json(response.content))
 
     # ── Post-processing ───────────────────────────────────────────────────────

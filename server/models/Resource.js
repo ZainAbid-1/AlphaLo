@@ -6,6 +6,6 @@ const resourceSchema = new mongoose.Schema({
     type: String, // e.g., 'pdf', 'video', 'link'
     url: String,
     description: String
-}, { timestamps: true });
+}, { timestamps: true, collection: 'resources' });
 
 module.exports = mongoose.model('Resource', resourceSchema);

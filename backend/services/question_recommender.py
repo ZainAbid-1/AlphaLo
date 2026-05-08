@@ -53,7 +53,7 @@ class QuestionRecommender:
 
     def _cache_key(self, q_text: str) -> str:
         """Stable SHA-256 cache key for a question string."""
-        return "alphalo:rec:" + hashlib.sha256(q_text.encode()).hexdigest()
+        return "alphalo:rec:v3:" + hashlib.sha256(q_text.encode()).hexdigest()
 
     async def _process_single_question(
         self,
@@ -97,7 +97,23 @@ class QuestionRecommender:
         docs = await loop.run_in_executor(
             None, lambda: vector_store.similarity_search(search_query, k=17)
         )
-        context = "\n\n".join([d.page_content for d in docs])
+        # Build context grouped by page number to prevent confusion
+        page_groups = {}
+        for d in docs:
+            p_num = d.metadata.get("page_label")
+            if p_num is None:
+                page_idx = d.metadata.get("page")
+                p_num = page_idx + 1 if (page_idx is not None and isinstance(page_idx, int)) else "Unknown"
+            if p_num not in page_groups:
+                page_groups[p_num] = []
+            page_groups[p_num].append(d.page_content)
+        
+        context_parts = []
+        for p_num, contents in page_groups.items():
+            combined_content = "\n\n".join(contents)
+            context_parts.append(f"<<<< TEXTBOOK SOURCE: PAGE {p_num} >>>>\n{combined_content}")
+            
+        context = "\n\n".join(context_parts)
 
         instruction = f"""
             You are a Universal Academic Specialist.
@@ -116,9 +132,14 @@ class QuestionRecommender:
             1. Understand the COMPLETE question above in its entirety before generating a response.
                - If the question contains a table (e.g., compare features across multiple rows), treat ALL rows as part of one unified question.
                - Do NOT focus on individual rows or sub-items in isolation; the whole question is the target.
-            2. Scour the Textbook Context for a matching 'Worked Example', 'Practice Problem', 'Check Point', or 'Chapter-End Exercise' that aligns with the logic, difficulty, and theme of the full question.
-            3. If you find a direct or highly similar match, reproduce it FULLY under: "**📖 MATCHING EXERCISE**".
-            4. MANDATORY: State the Page Number or Section. If not explicitly found, estimate based on the context or state "Page: [See Chapter Reference]".
+            2. Scour the Textbook Context for ACTUAL 'Worked Examples', 'Practice Problems', 'Check Points', or 'Chapter-End Exercises' that align with the academic concept and difficulty of the exam question.
+            3. MATCHING RULE: If you find a question in the textbook that is semantically similar (i.e., tests the same logic, even if phrased differently), reproduce it under "**📖 MATCHING EXERCISE**".
+               - CRITICAL: Only use text that is explicitly presented as an exercise, example, or problem in the book.
+               - If no actual exercises/questions exist in the context, skip this section.
+            4. MANDATORY: State the page number as "Page: X" (e.g., "Page: 28").
+               - Use ONLY the numbers found in the "<<<< TEXTBOOK SOURCE: PAGE X >>>>" markers.
+               - DO NOT combine page numbers with dashes (e.g., no "37-17"). If content spans multiple pages, use a comma (e.g., "Page: 37, 38").
+               - DO NOT include the "TEXTBOOK SOURCE" or bracket labels in your final response; just the number.
             5. If no literal exercise exists, design a high-quality "Mastery Challenge" that addresses the FULL scope of the question (all rows/parts) under: "**🛠️ MASTERY CHALLENGE**".
             6. Provide a 2-sentence strategic summary of the core academic principle under: "**💡 KEY CONCEPT**".
             

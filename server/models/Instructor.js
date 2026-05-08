@@ -7,6 +7,6 @@ const instructorSchema = new mongoose.Schema({
     title: String,
     avatar: String,
     bio: String
-}, { timestamps: true });
+}, { timestamps: true, collection: 'instructors' });
 
 module.exports = mongoose.model('Instructor', instructorSchema);
