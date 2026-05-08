@@ -83,7 +83,31 @@ export default function Dashboard() {
             <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-1 transition-all" />
           </button>
 
-          {/* ─── Syllabus Breakdown ─── */}
+          {/*HELPING RESOURCES BUTTON*/}
+          <div className="backdrop-blur-xl bg-gradient-to-r from-[#10B981]/10 to-[#3B82F6]/10 border border-white/10 rounded-2xl p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-[#10B981] to-[#3B82F6] rounded-xl">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Important Helping Resources</h3>
+                  <p className="text-gray-400 text-sm">
+                    Access hand-picked video lectures and external material for {currentInstructor}.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/resources/${courseId}`)}
+                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/20 text-white rounded-xl font-semibold transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5 text-yellow-400" />
+                View Material
+              </button>
+            </div>
+          </div>
+
+          {/* Syllabus Breakdown */}
           <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-sm relative overflow-hidden group/container">
             {/* Subtle glow effect */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#7C3AED] rounded-full blur-[100px] opacity-10 group-hover/container:opacity-20 transition-opacity"></div>

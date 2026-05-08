@@ -7,6 +7,7 @@ import MockExam from './pages/MockExam';
 import BookCorrelation from './pages/BookCorrelation';
 import AdminDashboard from './pages/AdminDashboard';
 import AuthGuard from './pages/AuthGuard';
+import HelpingResources from './pages/HelpingResources';
 import { createElement } from 'react';
 
 // Helper to wrap a component in AuthGuard
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
       {
         path: 'correlation/:topicId',
         Component: protect(BookCorrelation),
+      },
+      {
+        path: 'resources/:courseId',
+        Component: protect(HelpingResources),
       },
       {
         path: 'admin',

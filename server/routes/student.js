@@ -149,4 +149,23 @@ router.get('/book-patterns/:course_id/:topic_name', async (req, res) => {
     }
 });
 
+router.get('/resources/:courseId', async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        
+        // Use the getDb function from your mongodb.js
+        const db = await getDb(); 
+        
+        // Fetch all documents from the 'resources' collection for this course
+        const resources = await db.collection('resources')
+            .find({ course_id: courseId })
+            .toArray();
+
+        res.json(resources);
+    } catch (error) {
+        console.error("Error fetching resources:", error);
+        res.status(500).json({ error: "Failed to fetch helping materials." });
+    }
+});
+
 module.exports = router;
