@@ -4,7 +4,7 @@ import json
 import os
 import redis.asyncio as aioredis
 from langchain_pinecone import PineconeVectorStore
-from langchain_community.embeddings import HuggingFaceEmbeddings
+# from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 
@@ -34,9 +34,8 @@ RECOMMENDATION_TTL = 60 * 60 * 24 * 7  # 7 days
 
 class QuestionRecommender:
     def __init__(self, llm=None, api_key: str | None = None, model_name: str | None = None):
-        self.embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
-        )
+        # Initialize as None to support lazy loading
+        self._embedding_model = None
         if llm:
             self.llm = llm
         else:
@@ -51,6 +50,17 @@ class QuestionRecommender:
                     model=model_name or os.getenv("OPENAI_MODEL_NAME") or "gpt-4o-mini",
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
                 )
+
+    @property
+    def embedding_model(self):
+        """Lazy loader for the embedding model to speed up server startup."""
+        if self._embedding_model is None:
+            from langchain_community.embeddings import HuggingFaceEmbeddings
+            print("DEBUG: Initializing embedding model for QuestionRecommender...")
+            self._embedding_model = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
+            )
+        return self._embedding_model
 
     # ------------------------------------------------------------------
     # Cache helpers

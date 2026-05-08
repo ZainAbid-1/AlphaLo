@@ -81,10 +81,15 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
 # Initialize the new services once
+print("DEBUG: Starting service initialization...")
 extractor = QuestionExtractor(llm=llm_precise)
+print("DEBUG: QuestionExtractor initialized.")
 parser = TextbookIngestor() 
+print("DEBUG: TextbookIngestor initialized.")
 recommender = QuestionRecommender(llm=llm_default)
+print("DEBUG: QuestionRecommender initialized.")
 exam_generator = ExamGeneratorService(llm=llm_default)
+print("DEBUG: ExamGenerator initialized.")
 
 # Functions to provide these services to your routes
 def get_question_extractor(): return extractor
