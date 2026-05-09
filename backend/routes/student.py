@@ -41,26 +41,34 @@ async def get_book_patterns(
     extractor = Depends(get_question_extractor),
     recommender = Depends(get_question_recommender),
 ):
-    # 1. Fetch past paper from MongoDB (may not exist)
-    paper = await db.past_papers.find_one({"course_id": course_id})
+    try:
+        print(f"DEBUG: Fetching book patterns for {course_id} - {topic_name}")
+        
+        # 1. Fetch past paper from MongoDB (may not exist)
+        paper = await db.past_papers.find_one({"course_id": course_id})
 
-    if not paper:
-        # No past paper — still provide concept-driven recommendations
-        # by expanding the topic into sub-concepts and using them as seeds.
-        print(f"INFO: No past paper for course {course_id}. Using concept expansion only.")
-        concepts = await extractor.expand_topic_concepts(topic_name)
-        questions = []   # recommender will synthesise seeds from concepts
-    else:
-        # 2. Extract topic-specific questions + expand concepts (parallel inside)
-        result = await extractor.get_questions(paper["raw_content"], topic_name)
-        questions = result.get("questions", [])
-        concepts  = result.get("concepts", [])
-        print(f"INFO: Extracted {len(questions)} question(s), {len(concepts)} concept(s) for '{topic_name}'")
+        if not paper:
+            # No past paper — still provide concept-driven recommendations
+            print(f"INFO: No past paper for course {course_id}. Using concept expansion only.")
+            concepts = await extractor.expand_topic_concepts(topic_name)
+            questions = []   
+        else:
+            # 2. Extract topic-specific questions + expand concepts
+            result = await extractor.get_questions(paper["raw_content"], topic_name)
+            questions = result.get("questions", [])
+            concepts  = result.get("concepts", [])
+            print(f"INFO: Extracted {len(questions)} question(s), {len(concepts)} concept(s) for '{topic_name}'")
 
-    # 3. Match to Pinecone + LLM in parallel, now with richer multi-query search
-    recommendations = await recommender.get_book_recommendations(
-        questions,
-        topic_concepts=concepts,
-    )
-    return recommendations
+        # 3. Match to Pinecone + LLM
+        recommendations = await recommender.get_book_recommendations(
+            questions,
+            topic_concepts=concepts,
+        )
+        return recommendations
+
+    except Exception as e:
+        print(f"CRITICAL ERROR in get_book_patterns: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"AI Search failed: {str(e)}")
 
