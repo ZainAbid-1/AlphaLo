@@ -262,8 +262,6 @@ uvicorn main:app --reload --port 8000
 
 All secrets are stored as environment variables in Vercel and Render dashboards — never in source code.
 
-Live URL: [https://alpha-lo.vercel.app](https://alpha-lo.vercel.app)
-
 ---
 
 ## Infrastructure
