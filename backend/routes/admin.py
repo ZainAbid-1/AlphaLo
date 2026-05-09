@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from services.mongo_client import db
 from services.textbook_parser import TextbookIngestor
 from dependencies import get_textbook_parser, get_question_extractor, get_admin_user, get_exam_generator
@@ -24,7 +24,7 @@ async def process_textbook_task(temp_file_path: str, course_id: str, title: str,
             "title": title,
             "source": temp_file_path,   # Pinecone metadata key — needed for cleanup
             "chunks_count": len(chunks),
-            "processed_at": datetime.utcnow()
+            "processed_at": datetime.now(timezone.utc)
         })
         print(f"SUCCESS: Textbook '{title}' indexed in Pinecone and recorded in MongoDB.")
     except Exception as e:
@@ -51,7 +51,7 @@ async def process_past_paper_task(temp_file_path: str, course_id: str, title: st
             "raw_content": exam_text,
             "blueprint": blueprint,
             "paper_type": paper_type,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         })
         print(f"SUCCESS: Past Paper '{title}' saved with structured AI Blueprint in MongoDB.")
     except Exception as e:
