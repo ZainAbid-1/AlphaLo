@@ -42,9 +42,9 @@ export default function BookCorrelation() {
       </div>
     ),
     thead: ({ node, ...props }: any) => <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />,
-    th: ({ node, ...props }: any) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
+    th: ({ node, ...props }: any) => <th className="px-3 py-3 sm:px-6 sm:py-5 border-b border-white/20" {...props} />,
     tr: ({ node, ...props }: any) => <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />,
-    td: ({ node, ...props }: any) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
+    td: ({ node, ...props }: any) => <td className="px-3 py-3 sm:px-6 sm:py-4 text-gray-200 font-medium" {...props} />,
     code: ({ node, inline, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
@@ -83,8 +83,8 @@ export default function BookCorrelation() {
               {/* Pulse dot only — no language label */}
               <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse"></div>
             </div>
-            <div className="p-6 max-h-[600px] overflow-y-auto">
-              <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
+            <div className="p-4 sm:p-6 max-h-[600px] overflow-y-auto">
+              <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words text-xs sm:text-sm">
                 <code className={className} {...props}>
                   {children}
                 </code>
@@ -97,7 +97,7 @@ export default function BookCorrelation() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 sm:p-8 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         
         {/* Back Button */}
@@ -110,20 +110,20 @@ export default function BookCorrelation() {
         </button>
 
         {/* Header */}
-        <div className="backdrop-blur-xl bg-gradient-to-r from-[#10B981]/10 to-[#7C3AED]/10 border border-white/10 rounded-3xl p-8 mb-12 shadow-2xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-2xl shadow-lg shadow-[#10B981]/20">
-                <BookOpen className="w-8 h-8 text-white" />
+        <div className="backdrop-blur-xl bg-gradient-to-r from-[#10B981]/10 to-[#7C3AED]/10 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 mb-8 sm:mb-12 shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-5">
+              <div className="p-3 sm:p-4 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-xl sm:rounded-2xl shadow-lg shadow-[#10B981]/20 shrink-0">
+                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <div>
-                <h1 className="text-4xl font-bold text-white tracking-tight">Correlation Intelligence</h1>
-                <p className="text-gray-400 mt-1">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-4xl font-bold text-white tracking-tight">Correlation Intelligence</h1>
+                <p className="text-gray-400 mt-1 text-sm sm:text-base">
                   Topic: <span className="text-[#10B981] font-bold">{topic}</span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm">
+            <div className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm w-fit">
               <Sparkles className="w-4 h-4 text-[#7C3AED]" />
               <span className="text-xs font-bold text-white uppercase tracking-widest">AI Analysis Active</span>
             </div>
@@ -160,10 +160,10 @@ export default function BookCorrelation() {
             }
             
             return (
-              <div key={index} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+              <div key={index} className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-stretch">
                 
                 {/* Left Side - The Exam Pattern (The "Trigger") */}
-                <div className="lg:col-span-5 backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col shadow-xl">
+                <div className="lg:col-span-5 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col shadow-xl">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/20 flex items-center justify-center">
                       <Terminal className="w-4 h-4 text-[#7C3AED]" />
@@ -210,8 +210,8 @@ export default function BookCorrelation() {
                 </div>
 
                 {/* Right Side - The AI Recommendation (The "Foundation") */}
-                <div className="lg:col-span-7 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl overflow-hidden shadow-2xl transition-all hover:border-white/30">
-                  <div className="p-8">
+                <div className="lg:col-span-7 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl transition-all hover:border-white/30">
+                  <div className="p-5 sm:p-8">
                     <div className="flex items-center gap-3 mb-8">
                       <div className="w-8 h-8 rounded-lg bg-[#10B981]/20 flex items-center justify-center">
                         <BookOpen className="w-4 h-4 text-[#10B981]" />
@@ -228,7 +228,7 @@ export default function BookCorrelation() {
                       </ReactMarkdown>
                     </div>
                   </div>
-                  <div className="px-8 py-4 bg-white/5 border-t border-white/10 flex justify-between items-center">
+                  <div className="px-5 sm:px-8 py-4 bg-white/5 border-t border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <p className="text-[10px] text-gray-500 uppercase tracking widest font-bold">
                       Textbook Semantic Mapping
                     </p>
@@ -245,7 +245,7 @@ export default function BookCorrelation() {
         </div>
 
         {/* Footer Disclaimer */}
-        <div className="mt-20 py-12 border-t border-white/10 text-center">
+        <div className="mt-12 sm:mt-20 py-8 sm:py-12 border-t border-white/10 text-center">
           <p className="text-gray-500 text-sm max-w-lg mx-auto leading-relaxed">
             AlphaLo AI Intelligence. These correlations are generated by analyzing historical exam patterns against textbook semantic embeddings. Always refer to your course syllabus.
           </p>

@@ -29,11 +29,11 @@ const ExamMarkdownComponents: any = {
   thead: ({ node, ...props }: any) => (
     <thead className="bg-gradient-to-r from-white/10 to-white/5 text-sm uppercase font-black tracking-widest text-gray-300" {...props} />
   ),
-  th: ({ node, ...props }: any) => <th className="px-6 py-5 border-b border-white/20" {...props} />,
+  th: ({ node, ...props }: any) => <th className="px-3 py-3 sm:px-6 sm:py-5 border-b border-white/20" {...props} />,
   tr: ({ node, ...props }: any) => (
     <tr className="border-b border-white/10 transition-colors hover:bg-white/10 even:bg-white/5" {...props} />
   ),
-  td: ({ node, ...props }: any) => <td className="px-6 py-4 text-gray-200 font-medium" {...props} />,
+  td: ({ node, ...props }: any) => <td className="px-3 py-3 sm:px-6 sm:py-4 text-gray-200 font-medium" {...props} />,
 
   // ── macOS-style code window (identical to BookCorrelation) ───────────────────
   code: ({ node, inline, className, children, ...props }: any) => {
@@ -76,8 +76,8 @@ const ExamMarkdownComponents: any = {
             <div className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse" />
           </div>
           {/* Code body */}
-          <div className="p-6 max-h-[600px] overflow-y-auto">
-            <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words">
+          <div className="p-4 sm:p-6 max-h-[600px] overflow-y-auto">
+            <pre className="m-0 text-[#E0E7FF] leading-relaxed whitespace-pre-wrap break-words text-xs sm:text-sm">
               <code className={className} {...props}>{children}</code>
             </pre>
           </div>
@@ -216,7 +216,7 @@ export default function MockExam() {
 
   if (!examStarted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8">
+      <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 sm:p-8">
         <div className="max-w-4xl mx-auto">
           <button
             onClick={() => navigate('/dashboard')}
@@ -226,17 +226,17 @@ export default function MockExam() {
             Back to Dashboard
           </button>
 
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl text-center flex flex-col items-center">
-            <div className="p-4 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-2xl mb-6 shadow-lg shadow-[#7C3AED]/30">
-              <FileText className="w-12 h-12 text-white" />
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl text-center flex flex-col items-center">
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl sm:rounded-2xl mb-5 sm:mb-6 shadow-lg shadow-[#7C3AED]/30">
+              <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
             </div>
             
-            <h1 className="text-4xl font-bold text-white mb-2">Past Paper Simulator</h1>
-            <p className="text-gray-300 text-lg mb-8 max-w-lg">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2">Past Paper Simulator</h1>
+            <p className="text-gray-300 text-sm sm:text-lg mb-6 sm:mb-8 max-w-lg">
               This AI simulator generates a parallel practice exam based on the structural blueprint of the original paper while changing all specific values and scenarios for fresh practice.
             </p>
 
-            <div className="bg-white/5 border border-white/20 rounded-2xl p-6 w-full max-w-md mb-8">
+            <div className="bg-white/5 border border-white/20 rounded-2xl p-4 sm:p-6 w-full max-w-md mb-6 sm:mb-8">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-400">Course</span>
                 <span className="text-white font-semibold uppercase">{courseId}</span>
@@ -250,7 +250,7 @@ export default function MockExam() {
               </div>
             </div>
 
-            <div className="flex bg-white/5 border border-white/20 rounded-xl p-1 mb-8 w-full max-w-[240px] mx-auto">
+            <div className="flex bg-white/5 border border-white/20 rounded-xl p-1 mb-6 sm:mb-8 w-full max-w-[240px] mx-auto">
               <button
                 onClick={() => setSelectedPaperType('midterm')}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -292,10 +292,10 @@ export default function MockExam() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 pb-24 overflow-x-hidden">
-      <div className="max-w-[1400px] mx-auto py-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-3 sm:p-4 pb-24 overflow-x-hidden">
+      <div className="max-w-[1400px] mx-auto py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 px-4">
+        <div className="flex items-center justify-between mb-6 sm:mb-8 px-2 sm:px-4">
           <button
             onClick={() => setExamStarted(false)}
             className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
@@ -303,14 +303,14 @@ export default function MockExam() {
             <ChevronLeft className="w-5 h-5" />
             Back to Simulator
           </button>
-          <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white/60 text-xs font-bold uppercase tracking-widest">
+          <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/5 border border-white/10 rounded-full text-white/60 text-[10px] sm:text-xs font-bold uppercase tracking-widest">
             {topicQuestions.length} Questions Blueprint
           </div>
         </div>
 
         {/* Main Content: Natural Scrolling View */}
         <div className="flex flex-col items-center">
-          <div className="w-full max-w-6xl flex flex-col gap-12 px-4">
+          <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12 px-1 sm:px-4">
             {topicQuestions.map((q, index) => (
               <div key={index} className="w-full">
                 {q.section_title && (
@@ -320,8 +320,8 @@ export default function MockExam() {
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                   </div>
                 )}
-                <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl transition-all hover:border-white/30 mb-8">
-                  <div className="flex items-center justify-between mb-8">
+                <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl transition-all hover:border-white/30 mb-6 sm:mb-8">
+                  <div className="flex items-center justify-between mb-5 sm:mb-8">
                     <div className="flex items-center gap-3">
                       <span className="px-5 py-2 bg-[#7C3AED] text-white text-xs font-black tracking-widest rounded-full shadow-lg shadow-[#7C3AED]/20 uppercase">
                         Question {index + 1}
@@ -329,8 +329,7 @@ export default function MockExam() {
                     </div>
                   </div>
 
-                  {/* ── Main question text ── */}
-                  <div className="text-white text-xl font-medium mb-8 leading-relaxed font-sans">
+                  <div className="text-white text-base sm:text-xl font-medium mb-5 sm:mb-8 leading-relaxed font-sans">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={ExamMarkdownComponents}>
                       {q.text}
                     </ReactMarkdown>

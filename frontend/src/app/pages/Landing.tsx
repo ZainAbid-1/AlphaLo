@@ -41,16 +41,16 @@ export default function Landing() {
         <div className="absolute bottom-20 right-20 w-72 h-72 bg-[#10B981] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
       </div>
 
-      <div className="max-w-[1400px] w-full grid lg:grid-cols-2 gap-12 items-center relative z-10 px-6 lg:px-12">
+      <div className="max-w-[1400px] w-full grid lg:grid-cols-2 gap-8 sm:gap-12 items-center relative z-10 px-4 sm:px-6 lg:px-12">
         {/* Left side - Value Proposition */}
         <div className="text-white space-y-6">
-          <h1 className="text-5xl font-bold leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
             Prepare for exams,
             <br />
             <span className="text-[#7C3AED]">not just courses</span>
           </h1>
 
-          <p className="text-xl text-gray-300">
+          <p className="text-base sm:text-xl text-gray-300">
             AI-powered exam prep synced to your specific instructor. Transform hidden past papers into custom mock exams and textbook-correlated study plans.
           </p>
 
@@ -88,9 +88,9 @@ export default function Landing() {
         </div>
 
         {/* Right side - Auth Card */}
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
+        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
               Welcome to AlphaLo
             </h2>
             <p className="text-gray-300">

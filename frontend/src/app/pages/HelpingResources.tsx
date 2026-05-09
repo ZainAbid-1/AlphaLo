@@ -18,13 +18,13 @@ export default function HelpingResources() {
   }, [courseId]);
 
   return (
-    <div className="min-h-screen bg-[#1A2B48] p-8 text-white">
+    <div className="min-h-screen bg-[#1A2B48] p-4 sm:p-8 text-white">
       <div className="max-w-6xl mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-8">
           <ArrowLeft className="w-5 h-5" /> Back to Dashboard
         </button>
 
-        <h1 className="text-3xl font-bold mb-2">Helping Resources</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Helping Resources</h1>
         <p className="text-gray-400 mb-8">Curated video content to master this course.</p>
         <p className="text-gray-400 mb-8"> These resources are aligned with your course's and instructor's requirements.</p>
 

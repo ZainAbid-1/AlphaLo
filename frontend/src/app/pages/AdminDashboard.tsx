@@ -196,11 +196,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#1A2B48] via-[#2a3f5f] to-[#1A2B48] p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <button
               onClick={() => navigate('/dashboard')}
@@ -208,11 +208,11 @@ export default function AdminDashboard() {
             >
               <ArrowLeft className="w-4 h-4" /> Back to App
             </button>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Database className="w-8 h-8 text-[#7C3AED]" />
+            <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center gap-3">
+              <Database className="w-6 h-6 sm:w-8 sm:h-8 text-[#7C3AED]" />
               AlphaLo Admin Control
             </h1>
-            <p className="text-gray-400 mt-1">Manage infrastructure, courses, and AI knowledge bases.</p>
+            <p className="text-gray-400 mt-1 text-sm sm:text-base">Manage infrastructure, courses, and AI knowledge bases.</p>
           </div>
 
           {session && (
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
           <button
             onClick={() => setActiveTab('curriculum')}
             className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
 
         {/* --- TAB 1: CURRICULUM SETUP --- */}
         {activeTab === 'curriculum' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Add University */}
             <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 h-fit">
@@ -456,15 +456,15 @@ export default function AdminDashboard() {
 
         {/* --- TAB 2: AI KNOWLEDGE BASE UPLOADS --- */}
         {activeTab === 'uploads' && (
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 max-w-2xl mx-auto">
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-5 sm:p-8 max-w-2xl mx-auto">
             <div className="text-center mb-8">
               <UploadCloud className="w-12 h-12 text-[#10B981] mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">Feed the AI Engine</h2>
               <p className="text-gray-400 text-sm">Upload standard textbooks (for correlations) or past papers (for mock exam blueprints). PDFs will be vectorized and sent to Pinecone.</p>
             </div>
 
-            <form onSubmit={handleFileUpload} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleFileUpload} className="space-y-5 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-white font-medium">Document Type</label>
                   <select 

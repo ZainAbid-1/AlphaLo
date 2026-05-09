@@ -204,16 +204,16 @@ export default function Wizard() {
                     <button
                       key={uni.id}
                       onClick={() => handleUniversitySelect(uni)}
-                      className="group w-full flex items-center gap-4 p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[#7C3AED]/40 rounded-xl transition-all duration-200"
+                      className="group w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[#7C3AED]/40 rounded-xl transition-all duration-200"
                     >
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#7C3AED]/20 to-[#7C3AED]/5 border border-[#7C3AED]/20 rounded-xl flex items-center justify-center text-[#7C3AED] text-lg font-bold flex-shrink-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#7C3AED]/20 to-[#7C3AED]/5 border border-[#7C3AED]/20 rounded-xl flex items-center justify-center text-[#7C3AED] text-base sm:text-lg font-bold flex-shrink-0">
                         {uni.logo}
                       </div>
-                      <div className="text-left flex-1">
-                        <p className="text-white font-medium group-hover:text-[#7C3AED] transition-colors">{uni.name}</p>
-                        <p className="text-gray-500 text-xs mt-0.5">Institution</p>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="text-white text-sm sm:text-base font-medium group-hover:text-[#7C3AED] transition-colors truncate">{uni.name}</p>
+                        <p className="text-gray-500 text-[10px] sm:text-xs mt-0.5">Institution</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-0.5 transition-all shrink-0" />
                     </button>
                   ))
                 )}
@@ -256,16 +256,16 @@ export default function Wizard() {
                     <button
                       key={course.id}
                       onClick={() => handleCourseSelect(course)}
-                      className="group w-full flex items-center gap-4 p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[#10B981]/40 rounded-xl transition-all duration-200"
+                      className="group w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[#10B981]/40 rounded-xl transition-all duration-200"
                     >
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#10B981]/20 to-[#10B981]/5 border border-[#10B981]/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="w-5 h-5 text-[#10B981]" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#10B981]/20 to-[#10B981]/5 border border-[#10B981]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#10B981]" />
                       </div>
-                      <div className="text-left flex-1">
-                        <p className="text-white font-medium group-hover:text-[#10B981] transition-colors">{course.name}</p>
-                        <p className="text-gray-500 text-xs mt-0.5 uppercase tracking-wider">{course.code}</p>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="text-white text-sm sm:text-base font-medium group-hover:text-[#10B981] transition-colors truncate">{course.name}</p>
+                        <p className="text-gray-500 text-[10px] sm:text-xs mt-0.5 uppercase tracking-wider">{course.code}</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#10B981] group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#10B981] group-hover:translate-x-0.5 transition-all shrink-0" />
                     </button>
                   ))
                 )}
@@ -308,25 +308,25 @@ export default function Wizard() {
                     <button
                       key={instructor.id}
                       onClick={() => handleInstructorSelect(instructor)}
-                      className={`group w-full flex items-center gap-4 p-4 bg-white/[0.03] hover:bg-white/[0.07] border rounded-xl transition-all duration-200 ${
+                      className={`group w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/[0.03] hover:bg-white/[0.07] border rounded-xl transition-all duration-200 ${
                         selectedInstructor?.id === instructor.id
                           ? 'border-[#7C3AED]/60 bg-[#7C3AED]/10'
                           : 'border-white/10 hover:border-[#7C3AED]/40'
                       }`}
                     >
-                      <div className="w-14 h-14 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-lg shadow-[#7C3AED]/20">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-[#7C3AED] to-[#9333EA] rounded-xl flex items-center justify-center text-white text-base sm:text-lg font-bold flex-shrink-0 shadow-lg shadow-[#7C3AED]/20">
                         {instructor.avatar}
                       </div>
-                      <div className="text-left flex-1">
-                        <p className="text-white font-semibold text-lg group-hover:text-[#7C3AED] transition-colors">{instructor.name}</p>
-                        <p className="text-gray-500 text-sm">{instructor.title}</p>
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="text-white font-semibold text-base sm:text-lg group-hover:text-[#7C3AED] transition-colors truncate">{instructor.name}</p>
+                        <p className="text-gray-500 text-xs sm:text-sm">{instructor.title}</p>
                       </div>
                       {selectedInstructor?.id === instructor.id ? (
-                        <div className="w-8 h-8 bg-[#10B981] rounded-lg flex items-center justify-center shadow-lg shadow-[#10B981]/20">
-                          <Check className="w-4 h-4 text-white" />
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-[#10B981] rounded-lg flex items-center justify-center shadow-lg shadow-[#10B981]/20 shrink-0">
+                          <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                         </div>
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#7C3AED] group-hover:translate-x-0.5 transition-all shrink-0" />
                       )}
                     </button>
                   ))
