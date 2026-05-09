@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Check, ChevronRight, GraduationCap, BookOpen, User, ArrowLeft, Building2 } from 'lucide-react';
+import { Search, Check, ChevronRight, GraduationCap, BookOpen, User, ArrowLeft, Building2, Loader2 } from 'lucide-react';
 import { University, Course, Instructor } from '../data/mockData';
 import { api } from '../../services/api';
 
@@ -11,16 +11,18 @@ export default function Wizard() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const [universities, setUniversities] = useState<University[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
 
   useEffect(() => {
-    // Fetch available universities on mount
+    setIsLoading(true);
     api.get('/student/universities')
       .then(res => setUniversities(res.data))
-      .catch(err => console.error("Failed to load universities", err));
+      .catch(err => console.error("Failed to load universities", err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const filteredUniversities = universities.filter(uni =>
@@ -29,18 +31,22 @@ export default function Wizard() {
 
   const handleUniversitySelect = (uni: University) => {
     setSelectedUniversity(uni);
+    setIsLoading(true);
     api.get(`/student/courses/${uni.id}`)
       .then(res => setCourses(res.data))
-      .catch(err => console.error("Failed to load courses", err));
+      .catch(err => console.error("Failed to load courses", err))
+      .finally(() => setIsLoading(false));
     setStep(2);
     setSearchQuery('');
   };
 
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course);
+    setIsLoading(true);
     api.get(`/student/instructors/${course.id}`)
       .then(res => setInstructors(res.data))
-      .catch(err => console.error("Failed to load instructors", err));
+      .catch(err => console.error("Failed to load instructors", err))
+      .finally(() => setIsLoading(false));
     setStep(3);
   };
 
@@ -183,10 +189,15 @@ export default function Wizard() {
 
               {/* University list */}
               <div className="space-y-2">
-                {filteredUniversities.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                    <Loader2 className="w-10 h-10 animate-spin mb-3 text-[#7C3AED]" />
+                    <p>Loading institutions...</p>
+                  </div>
+                ) : filteredUniversities.length === 0 ? (
                   <div className="text-center text-gray-500 py-16">
                     <Building2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>No institutions found. Have you seeded the database?</p>
+                    <p>No institutions found.</p>
                   </div>
                 ) : (
                   filteredUniversities.map((uni) => (
@@ -230,7 +241,12 @@ export default function Wizard() {
               </div>
 
               <div className="space-y-2">
-                {courses.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                    <Loader2 className="w-10 h-10 animate-spin mb-3 text-[#10B981]" />
+                    <p>Loading courses...</p>
+                  </div>
+                ) : courses.length === 0 ? (
                   <div className="text-center text-gray-500 py-16">
                     <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p>No courses available for this university.</p>
@@ -277,16 +293,15 @@ export default function Wizard() {
               </div>
 
               <div className="space-y-2">
-                {instructors.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                    <Loader2 className="w-10 h-10 animate-spin mb-3 text-[#7C3AED]" />
+                    <p>Loading instructors...</p>
+                  </div>
+                ) : instructors.length === 0 ? (
                   <div className="text-center text-gray-500 py-16 space-y-4">
                     <User className="w-10 h-10 mx-auto opacity-30" />
                     <p>No instructors found for this course yet.</p>
-                    <button
-                      onClick={() => handleInstructorSelect({ id: 'dummy', courseId: selectedCourse?.id || '', name: 'Default Instructor', title: 'Professor', avatar: 'DI' })}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7C3AED] text-white rounded-xl text-sm font-medium hover:bg-[#9333EA] transition-all"
-                    >
-                      Use Default Instructor
-                    </button>
                   </div>
                 ) : (
                   instructors.map((instructor) => (
