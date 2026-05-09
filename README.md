@@ -13,7 +13,7 @@
 ![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-06b6d4)
 ![Redis](https://img.shields.io/badge/Cache-Redis_Upstash-DC382D)
 ![Supabase](https://img.shields.io/badge/Auth-Supabase-3ecf8e)
-![Vercel](https://img.shields.io/badge/Frontend_Deploy-Vercel-DC382D)
+![Vercel](https://img.shields.io/badge/Frontend_Deploy-Vercel-1C3C3C)
 ![Render](https://img.shields.io/badge/Backend_Deploy-Render-46E3B7)
 ![Status](https://img.shields.io/badge/Status-Production--Ready-success)
 
