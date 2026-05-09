@@ -9,7 +9,7 @@
 
 AlphaLo is a Retrieval-Augmented Generation (RAG) platform built to tackle the information overload problem that university students face during exam preparation. Instead of manually scanning hundreds of textbook pages or reverse-engineering instructor patterns from raw past papers, AlphaLo does that work automatically.
 
-The platform was built for NUST SEECS (Batch '28, targeting '29 onwards), but the architecture is intentionally general — any university can plug in its own course catalogue, textbooks, and past papers and get the same benefits.
+The platform was built for NUST SEECS, but the architecture is intentionally general — any university can plug in its own course catalogue, textbooks, and past papers and get the same benefits.
 
 Two user roles exist: **Admin** (manages catalogue and uploads assets) and **Student** (accesses AI-powered study features).
 
@@ -162,6 +162,7 @@ The Express gateway acts as a secure reverse proxy: it validates Supabase JWTs a
 - Node.js 18+
 - Python 3.11+
 - Accounts/API keys for: OpenAI, Pinecone, MongoDB Atlas, Supabase, Redis (Upstash)
+- .env.example files are present wherever required, with demo environment variables in the codebase
 
 ### 1. Clone the Repository
 
@@ -248,7 +249,7 @@ Live URL: [https://alpha-lo.vercel.app](https://alpha-lo.vercel.app)
 
 ---
 
-## Non-Functional Highlights
+## Infrastructure
 
 | Area | Detail |
 |---|---|
@@ -267,14 +268,5 @@ Live URL: [https://alpha-lo.vercel.app](https://alpha-lo.vercel.app)
 - Study-time tracker with progress analytics
 - Expanded resource gallery (notes, multi-paper archives)
 - Support for additional departments and universities beyond NUST SEECS
-
----
-
-## Authors
-
-| Name | Roll Number | Programme |
-|---|---|---|
-| Abdul Wasay | 504773 | BSAI-1 |
-| Zain Abid | 507257 | BSCS-14-D |
 
 ---
