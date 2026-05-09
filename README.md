@@ -3,23 +3,6 @@
 > AI-powered exam preparation: semantic textbook extraction, instructor-style mock exams, and curated learning resources.
 
 **Live Demo:** [https://alpha-lo.vercel.app](https://alpha-lo.vercel.app)  
-**Developed by:** Abdul Wasay (504773) & Zain Abid (507257) — NUST SEECS, Batch '28  
-**Course:** Web Technologies | Semester Project | May 2026
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Core Features](#core-features)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [API Reference](#api-reference)
-- [Getting Started](#getting-started)
-- [Deployment](#deployment)
-- [Non-Functional Highlights](#non-functional-highlights)
-- [Future Work](#future-work)
-
 ---
 
 ## Overview
