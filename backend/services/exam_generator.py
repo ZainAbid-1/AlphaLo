@@ -4,8 +4,6 @@ import asyncio
 import hashlib
 import os
 import redis.asyncio as aioredis
-from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
 
 # ── Redis client (lazy-initialised, shared across requests) ───────────────────
 _redis_client: aioredis.Redis | None = None
@@ -39,6 +37,7 @@ class ExamGeneratorService:
         else:
             provider = os.getenv("AI_PROVIDER", "openai").lower()
             if provider == "groq":
+                from langchain_groq import ChatGroq
                 self.llm = ChatGroq(
                     model=model_name or os.getenv("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile",
                     groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
@@ -46,6 +45,7 @@ class ExamGeneratorService:
                     timeout=150
                 )
             else:
+                from langchain_openai import ChatOpenAI
                 self.llm = ChatOpenAI(
                     model=model_name or os.getenv("OPENAI_MODEL_NAME") or "gpt-4o-mini",
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),

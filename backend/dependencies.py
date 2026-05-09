@@ -1,16 +1,14 @@
 import os
+import threading
 from dotenv import load_dotenv
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends, HTTPException, Security
 import jwt
 from jwt import PyJWKClient
 
-# These are now imported inside setup_services or lazy loaders
-# from services.paper_parser import QuestionExtractor
-# ... 
 
 load_dotenv()
-# ... rest of file ...
+
 
 # AI Provider Selection
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
@@ -89,52 +87,89 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         print(f"JWT VALIDATION ERROR: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from services.paper_parser import QuestionExtractor
+    from services.textbook_parser import TextbookIngestor
+    from services.question_recommender import QuestionRecommender
+    from services.exam_generator import ExamGeneratorService
+
 # Global service instances (lazy-loaded)
 extractor = None
 parser = None
 recommender = None
 exam_generator = None
 
+# Thread lock for safe initialization
+_init_lock = threading.Lock()
+
 def setup_services():
     """Initializes services only when called, avoiding import-time hangs."""
     global extractor, parser, recommender, exam_generator, llm_default, llm_precise
-    if extractor is not None:
-        return
-        
-    print("DEBUG: Starting service initialization (inside setup_services)...")
     
-    # Dynamic imports to avoid boot-time hangs
-    from services.paper_parser import QuestionExtractor
-    from services.textbook_parser import TextbookIngestor
-    from services.question_recommender import QuestionRecommender
-    from services.exam_generator import ExamGeneratorService
+    with _init_lock:
+        # Initialize LLMs if not already done
+        if llm_default is None:
+            llm_default = create_llm(temperature=0.3)
+        if llm_precise is None:
+            llm_precise = create_llm(temperature=0.1)
+            
+        # 1. QuestionExtractor
+        if extractor is None:
+            try:
+                from services.paper_parser import QuestionExtractor
+                extractor = QuestionExtractor(llm=llm_precise)
+                print("DEBUG: QuestionExtractor ready.")
+            except Exception as e:
+                print(f"CRITICAL ERROR: Failed to init QuestionExtractor: {e}")
 
-    # Initialize LLMs
-    llm_default = create_llm(temperature=0.3)
-    llm_precise = create_llm(temperature=0.1)
+        # 2. TextbookIngestor
+        if parser is None:
+            try:
+                from services.textbook_parser import TextbookIngestor
+                parser = TextbookIngestor() 
+                print("DEBUG: TextbookIngestor ready.")
+            except Exception as e:
+                print(f"CRITICAL ERROR: Failed to init TextbookIngestor: {e}")
 
-    extractor = QuestionExtractor(llm=llm_precise)
-    print("DEBUG: QuestionExtractor ready.")
-    parser = TextbookIngestor() 
-    print("DEBUG: TextbookIngestor ready.")
-    recommender = QuestionRecommender(llm=llm_default)
-    print("DEBUG: QuestionRecommender ready.")
-    exam_generator = ExamGeneratorService(llm=llm_default)
-    print("DEBUG: ExamGenerator ready.")
+        # 3. QuestionRecommender
+        if recommender is None:
+            try:
+                from services.question_recommender import QuestionRecommender
+                recommender = QuestionRecommender(llm=llm_default)
+                print("DEBUG: QuestionRecommender ready.")
+            except Exception as e:
+                print(f"CRITICAL ERROR: Failed to init QuestionRecommender: {e}")
+
+        # 4. ExamGenerator
+        if exam_generator is None:
+            try:
+                from services.exam_generator import ExamGeneratorService
+                exam_generator = ExamGeneratorService(llm=llm_default)
+                print("DEBUG: ExamGenerator ready.")
+            except Exception as e:
+                print(f"CRITICAL ERROR: Failed to init ExamGenerator: {e}")
 
 # Functions to provide these services to your routes
-def get_question_extractor(): 
-    setup_services()
-    return extractor
+def get_question_extractor() -> "QuestionExtractor": 
+    if extractor is None:
+        setup_services()
+    return extractor # type: ignore
 
-def get_textbook_parser(): 
-    setup_services()
-    return parser
+def get_textbook_parser() -> "TextbookIngestor": 
+    if parser is None:
+        setup_services()
+    return parser # type: ignore
 
-def get_question_recommender(): 
-    setup_services()
-    return recommender
+def get_question_recommender() -> "QuestionRecommender": 
+    if recommender is None:
+        setup_services()
+    return recommender # type: ignore
 
-def get_exam_generator(): 
-    setup_services()
-    return exam_generator
+def get_exam_generator() -> "ExamGeneratorService": 
+    if exam_generator is None:
+        setup_services()
+    if exam_generator is None:
+        print("ERROR: get_exam_generator returning None!")
+    return exam_generator # type: ignore

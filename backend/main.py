@@ -31,12 +31,7 @@ except Exception as e:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log("INFO: FastAPI booting up. Port binding in progress...")
-    try:
-        import threading
-        log("DEBUG: Starting background service setup...")
-        threading.Thread(target=setup_services, daemon=True).start()
-    except Exception as e:
-        log(f"ERROR: Background setup failed: {e}")
+    # Services are now lazy-loaded on demand in dependencies.py
     yield
     log("INFO: FastAPI shutting down.")
 
