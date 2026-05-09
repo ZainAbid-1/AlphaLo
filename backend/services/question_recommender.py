@@ -58,7 +58,7 @@ class QuestionRecommender:
             from langchain_community.embeddings import HuggingFaceEmbeddings
             print("DEBUG: Initializing embedding model for QuestionRecommender...")
             self._embedding_model = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
             )
         return self._embedding_model
 
