@@ -3,10 +3,7 @@ import hashlib
 import json
 import os
 import redis.asyncio as aioredis
-from langchain_pinecone import PineconeVectorStore
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
+# HEAVY IMPORTS REMOVED TO PREVENT OOM CRASHES ON STARTUP
 
 # --- Redis client (lazy-initialized, shared across requests) ---
 _redis_client: aioredis.Redis | None = None
@@ -41,11 +38,13 @@ class QuestionRecommender:
         else:
             provider = os.getenv("AI_PROVIDER", "openai").lower()
             if provider == "groq":
+                from langchain_groq import ChatGroq
                 self.llm = ChatGroq(
                     model=model_name or os.getenv("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile",
                     groq_api_key=api_key or os.getenv("GROQ_API_KEY"),
                 )
             else:
+                from langchain_openai import ChatOpenAI
                 self.llm = ChatOpenAI(
                     model=model_name or os.getenv("OPENAI_MODEL_NAME") or "gpt-4o-mini",
                     openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
@@ -76,7 +75,7 @@ class QuestionRecommender:
 
     async def _multi_search(
         self,
-        vector_store: PineconeVectorStore,
+        vector_store,
         queries: list[str],
         k_per_query: int = 8,
     ) -> list:
@@ -154,8 +153,8 @@ class QuestionRecommender:
         self,
         q_item,
         topic_concepts: list[str],
-        vector_store: PineconeVectorStore,
-        redis: aioredis.Redis | None,
+        vector_store,
+        redis,
     ) -> dict:
         """
         For one exam question:
@@ -165,6 +164,7 @@ class QuestionRecommender:
           4. Call LLM with a professional, flexible academic study-guide prompt
           5. Cache and return result
         """
+        from langchain_pinecone import PineconeVectorStore
         # --- Normalise input ---
         if isinstance(q_item, dict):
             q_text = q_item.get("text", "")
@@ -311,6 +311,7 @@ FORMATTING RULES:
         redis = await _get_redis()
         concepts = topic_concepts or []
 
+        from langchain_pinecone import PineconeVectorStore
         # Shared Pinecone vector store (one connection, reused for all questions)
         vector_store = PineconeVectorStore(
             index_name="alphalo-index",

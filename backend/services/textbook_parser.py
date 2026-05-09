@@ -1,8 +1,4 @@
-# from langchain_google_genai import GoogleGenerativeAIEmbeddings # pyright: ignore[reportMissingImports]
-from langchain_pinecone import PineconeVectorStore # pyright: ignore[reportMissingImports]
-from langchain_community.document_loaders import PyMuPDFLoader # pyright: ignore[reportMissingImports]
-from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
-# from langchain_huggingface import HuggingFaceEmbeddings
+# HEAVY IMPORTS REMOVED FROM TOP LEVEL TO SAVE RAM
 import logging
 import re
 
@@ -134,6 +130,7 @@ class TextbookIngestor:
         return documents
 
     def data_chunking(self, data):
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
         print("Chunking text...")
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         chunks = text_splitter.split_documents(data)
@@ -141,6 +138,7 @@ class TextbookIngestor:
         return chunks
 
     def vectorization(self, chunks):
+        from langchain_pinecone import PineconeVectorStore
         print(f"Starting embedding & Pinecone upload for {len(chunks)} chunks...")
         
         batch_size = 200
@@ -168,6 +166,7 @@ class TextbookIngestor:
 
     def delete_book(self, filename: str):
         """Deletes all chunks belonging to a specific file from Pinecone."""
+        from langchain_pinecone import PineconeVectorStore
         print(f"Deleting all records for source: {filename}...")
         vector_store = PineconeVectorStore(
             index_name="alphalo-index",
