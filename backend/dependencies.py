@@ -1,38 +1,39 @@
 import os
 from dotenv import load_dotenv
-from services.paper_parser import QuestionExtractor
-from services.textbook_parser import TextbookIngestor
-from services.question_recommender import QuestionRecommender
-from services.exam_generator import ExamGeneratorService
-from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
-from jwt import PyJWKClient  # Added for ES256 support
 from fastapi import Depends, HTTPException, Security
+import jwt
+from jwt import PyJWKClient
+
+# These are now imported inside setup_services or lazy loaders
+# from services.paper_parser import QuestionExtractor
+# ... 
 
 load_dotenv()
+# ... rest of file ...
 
 # AI Provider Selection
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
 
 def create_llm(temperature=0.3):
     if AI_PROVIDER == "groq":
+        from langchain_groq import ChatGroq
         return ChatGroq(
             model=os.getenv("GROQ_MODEL_NAME", "llama-3.3-70b-versatile"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=temperature
         )
     else:
+        from langchain_openai import ChatOpenAI
         return ChatOpenAI(
             model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini"),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             temperature=temperature
         )
 
-# Base LLM instances for services
-llm_default = create_llm(temperature=0.3)
-llm_precise = create_llm(temperature=0.1)
+# Base LLM instances (will be initialized in setup_services)
+llm_default = None
+llm_precise = None
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://tngqrxlglenllgufrzuc.supabase.co")
 
@@ -88,11 +89,22 @@ exam_generator = None
 
 def setup_services():
     """Initializes services only when called, avoiding import-time hangs."""
-    global extractor, parser, recommender, exam_generator
+    global extractor, parser, recommender, exam_generator, llm_default, llm_precise
     if extractor is not None:
         return
         
     print("DEBUG: Starting service initialization (inside setup_services)...")
+    
+    # Dynamic imports to avoid boot-time hangs
+    from services.paper_parser import QuestionExtractor
+    from services.textbook_parser import TextbookIngestor
+    from services.question_recommender import QuestionRecommender
+    from services.exam_generator import ExamGeneratorService
+
+    # Initialize LLMs
+    llm_default = create_llm(temperature=0.3)
+    llm_precise = create_llm(temperature=0.1)
+
     extractor = QuestionExtractor(llm=llm_precise)
     print("DEBUG: QuestionExtractor ready.")
     parser = TextbookIngestor() 
