@@ -7,13 +7,13 @@ from dependencies import setup_services
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # This runs when the server starts
-    print("INFO: FastAPI lifespan starting. Port should be open now.")
-    # We can trigger the heavy setup in the background if we want, 
-    # but lazy-loading in dependencies.py is already handled.
+    """Ensure the server binds to the port immediately, then warms up services in background."""
+    print("INFO: FastAPI booting up. Port binding in progress...")
+    # Trigger heavy AI setup in a background thread
+    import threading
+    threading.Thread(target=setup_services, daemon=True).start()
     yield
-    # This runs when the server stops
-    print("INFO: FastAPI lifespan stopping.")
+    print("INFO: FastAPI shutting down.")
 
 app = FastAPI(title="AlphaLo Python API", lifespan=lifespan)
 
