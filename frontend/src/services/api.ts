@@ -2,7 +2,7 @@
 import axios, { AxiosError } from 'axios';
 import { supabase } from './supabaseClient'; // Import your new client
 
-const API_BASE_URL = (import.meta.env.VITE_SERVER_URL || 'http://localhost:5000').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_SERVER_URL || 'http://localhost:5000');
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
