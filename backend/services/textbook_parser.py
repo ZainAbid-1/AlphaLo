@@ -26,7 +26,8 @@ class TextbookIngestor:
             from langchain_openai import OpenAIEmbeddings
             print("INFO: Initializing OpenAI embedding model...")
             self._embedding_model = OpenAIEmbeddings(
-                model="text-embedding-3-small"
+                model="text-embedding-3-small",
+                dimensions=768
             )
         return self._embedding_model
 

@@ -57,7 +57,8 @@ class QuestionRecommender:
             from langchain_openai import OpenAIEmbeddings
             print("DEBUG: Initializing OpenAI embedding model for QuestionRecommender...")
             self._embedding_model = OpenAIEmbeddings(
-                model="text-embedding-3-small"
+                model="text-embedding-3-small",
+                dimensions=768
             )
         return self._embedding_model
 
