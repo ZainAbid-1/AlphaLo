@@ -35,8 +35,8 @@ export default function AdminDashboard() {
     await supabase.auth.signOut();
   };
 
-  const allowedEmails = (import.meta.env.VITE_ALLOWED_ADMIN_EMAILS || '').split(',');
-  const isAuthorized = session && allowedEmails.includes(session.user.email);
+  const allowedEmails = (import.meta.env.VITE_ALLOWED_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+  const isAuthorized = session && allowedEmails.includes(session.user.email?.toLowerCase());
 
   // --- FORM STATES ---
   const[uniData, setUniData] = useState({ id: '', name: '' });

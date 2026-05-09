@@ -43,7 +43,7 @@ jwks_client = PyJWKClient(JWKS_URL)
 
 # SANITIZE SECRET: Clear quotes/spaces (Still needed for HS256/Service Role tokens)
 SUPABASE_JWT_SECRET = (os.getenv("SUPABASE_JWT_SECRET") or "").strip("'\" ")
-ALLOWED_ADMIN_EMAILS = os.getenv("ALLOWED_ADMIN_EMAILS", "").split(",")
+ALLOWED_ADMIN_EMAILS = [e.strip().lower() for e in os.getenv("ALLOWED_ADMIN_EMAILS", "").split(",") if e.strip()]
 
 security = HTTPBearer()
 
@@ -69,9 +69,9 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
             algorithms=["HS256", "ES256"], 
             options={"verify_aud": False}
         )
-        email = payload.get("email")
+        email = payload.get("email", "").strip().lower()
         if not email or email not in ALLOWED_ADMIN_EMAILS:
-            print(f"ADMIN AUTH FAIL: {email} not in {ALLOWED_ADMIN_EMAILS}")
+            print(f"ADMIN AUTH FAIL: '{email}' not in whitelist: {ALLOWED_ADMIN_EMAILS}")
             raise HTTPException(
                 status_code=403, 
                 detail=f"Access denied. {email} is not an authorized admin."

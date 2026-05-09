@@ -55,10 +55,10 @@ class QuestionRecommender:
     def embedding_model(self):
         """Lazy loader for the embedding model to speed up server startup."""
         if self._embedding_model is None:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
-            print("DEBUG: Initializing embedding model for QuestionRecommender...")
-            self._embedding_model = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            from langchain_openai import OpenAIEmbeddings
+            print("DEBUG: Initializing OpenAI embedding model for QuestionRecommender...")
+            self._embedding_model = OpenAIEmbeddings(
+                model="text-embedding-3-small"
             )
         return self._embedding_model
 

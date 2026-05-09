@@ -27,10 +27,10 @@ class TextbookIngestor:
     def embedding_model(self):
         """Lazy loader for the embedding model to speed up server startup."""
         if self._embedding_model is None:
-            from langchain_huggingface import HuggingFaceEmbeddings
-            print("INFO: Initializing HuggingFace embedding model...")
-            self._embedding_model = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            from langchain_openai import OpenAIEmbeddings
+            print("INFO: Initializing OpenAI embedding model...")
+            self._embedding_model = OpenAIEmbeddings(
+                model="text-embedding-3-small"
             )
         return self._embedding_model
 

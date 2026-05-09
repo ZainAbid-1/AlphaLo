@@ -1,9 +1,23 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Sparkles, BookOpen, Target, ChevronRight } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is already logged in and redirect if so
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/wizard');
+      }
+      setLoading(false);
+    });
+  }, [navigate]);
+
+  if (loading) return null; // Prevent flicker while checking auth
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
