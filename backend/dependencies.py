@@ -37,9 +37,16 @@ llm_precise = None
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://tngqrxlglenllgufrzuc.supabase.co")
 
-# JWKS Client for fetching Supabase public keys (required for ES256)
-JWKS_URL = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
-jwks_client = PyJWKClient(JWKS_URL)
+# Lazy-loaded JWKS client
+_jwks_client = None
+
+def get_jwks_client():
+    global _jwks_client
+    if _jwks_client is None:
+        print("DEBUG: Initializing JWKS client...")
+        jwks_url = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        _jwks_client = PyJWKClient(jwks_url)
+    return _jwks_client
 
 # SANITIZE SECRET: Clear quotes/spaces (Still needed for HS256/Service Role tokens)
 SUPABASE_JWT_SECRET = (os.getenv("SUPABASE_JWT_SECRET") or "").strip("'\" ")
@@ -57,7 +64,8 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         
         if alg == "ES256":
             # Fetch the public key from the Supabase JWKS endpoint
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            client = get_jwks_client()
+            signing_key = client.get_signing_key_from_jwt(token)
             key = signing_key.key
         else:
             # Fallback to symmetric secret for HS256
