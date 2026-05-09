@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+require('dotenv').config(); // Reads from server/.env locally, or Render env vars in production
 
 const studentRoutes = require('./routes/student');
 const adminRoutes = require('./routes/admin');
@@ -16,7 +15,13 @@ mongoose.connect(process.env.MONGODB_URL)
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Restrict CORS to allowed origins from env (comma-separated)
+// e.g. ALLOWED_ORIGINS="https://your-app.vercel.app,http://localhost:5173"
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',').map(o => o.trim());
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
 app.use(express.json());
 
 // API Routes

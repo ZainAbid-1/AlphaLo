@@ -3,11 +3,20 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
-.env
 .pytest_cache/
+backend/temp_uploads/
+
+# --- Environment Variables (NEVER commit secrets) ---
+.env
+.env.local
+server/.env
+frontend/.env
+backend/.env
+
+# --- Node ---
 node_modules/
 
-# --- Frontend ---
+# --- Frontend Build ---
 frontend/node_modules/
 frontend/dist/
 frontend/build/
@@ -17,4 +26,4 @@ frontend/build/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
+Thumbs.db

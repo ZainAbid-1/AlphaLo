@@ -80,14 +80,41 @@ def get_admin_user(auth: HTTPAuthorizationCredentials = Security(security)):
         print(f"JWT VALIDATION ERROR: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
-# Initialize the new services once
-extractor = QuestionExtractor(llm=llm_precise)
-parser = TextbookIngestor() 
-recommender = QuestionRecommender(llm=llm_default)
-exam_generator = ExamGeneratorService(llm=llm_default)
+# Global service instances (lazy-loaded)
+extractor = None
+parser = None
+recommender = None
+exam_generator = None
+
+def setup_services():
+    """Initializes services only when called, avoiding import-time hangs."""
+    global extractor, parser, recommender, exam_generator
+    if extractor is not None:
+        return
+        
+    print("DEBUG: Starting service initialization (inside setup_services)...")
+    extractor = QuestionExtractor(llm=llm_precise)
+    print("DEBUG: QuestionExtractor ready.")
+    parser = TextbookIngestor() 
+    print("DEBUG: TextbookIngestor ready.")
+    recommender = QuestionRecommender(llm=llm_default)
+    print("DEBUG: QuestionRecommender ready.")
+    exam_generator = ExamGeneratorService(llm=llm_default)
+    print("DEBUG: ExamGenerator ready.")
 
 # Functions to provide these services to your routes
-def get_question_extractor(): return extractor
-def get_textbook_parser(): return parser
-def get_question_recommender(): return recommender
-def get_exam_generator(): return exam_generator
+def get_question_extractor(): 
+    setup_services()
+    return extractor
+
+def get_textbook_parser(): 
+    setup_services()
+    return parser
+
+def get_question_recommender(): 
+    setup_services()
+    return recommender
+
+def get_exam_generator(): 
+    setup_services()
+    return exam_generator

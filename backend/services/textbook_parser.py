@@ -2,55 +2,135 @@
 from langchain_pinecone import PineconeVectorStore # pyright: ignore[reportMissingImports]
 from langchain_community.document_loaders import PyMuPDFLoader # pyright: ignore[reportMissingImports]
 from langchain_text_splitters import RecursiveCharacterTextSplitter # pyright: ignore[reportMissingImports]
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 import logging
+import re
 
 logging.getLogger("pypdf").setLevel(logging.ERROR)
+
+
+# Regex patterns compiled once for performance
+_PAGE_NUM_RE = re.compile(r'\b(\d{1,4})\b')
+_CHAPTER_PREFIX_RE = re.compile(r'(?i)^(Chapter|Section|Unit|Part)\s+\d+[\s\.:–-]*')
+# Headings: lines that start with a number+dot or are ALL CAPS / Title Case short lines
+_HEADING_RE = re.compile(
+    r'^(?:\d+[\.\d]*\s+[A-Z].{3,60}|[A-Z][A-Z\s]{3,50})$'
+)
+
+
 class TextbookIngestor:
     def __init__(self):
-        # initialize the models
-       self.embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
-        )
+        # Initialize as None to support lazy loading
+        self._embedding_model = None
 
+    @property
+    def embedding_model(self):
+        """Lazy loader for the embedding model to speed up server startup."""
+        if self._embedding_model is None:
+            from langchain_huggingface import HuggingFaceEmbeddings
+            print("INFO: Initializing HuggingFace embedding model...")
+            self._embedding_model = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/multi-qa-distilbert-cos-v1"
+            )
+        return self._embedding_model
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_page_number(page, page_index: int) -> str:
+        """
+        Try footer first (bottom 8% of page), then header (top 8%).
+        Most textbooks put the real page number in the footer; headers
+        often contain chapter titles that confuse number extraction.
+        Returns the detected page number string, or str(page_index + 1).
+        """
+        import fitz
+
+        height = page.rect.height
+        width = page.rect.width
+
+        def _pick_number_from_zone(rect) -> str | None:
+            raw = page.get_text("text", clip=rect)
+            text = raw.strip() if isinstance(raw, str) else ""
+            if not text:
+                return None
+            # Remove chapter/section labels that carry their own numbers
+            cleaned = _CHAPTER_PREFIX_RE.sub("", text).strip()
+            m = _PAGE_NUM_RE.search(cleaned)
+            if m:
+                num = int(m.group(1))
+                # Sanity check: real book pages are rarely > 2000
+                if 1 <= num <= 2000:
+                    return m.group(1)
+            return None
+
+        # 1. Footer zone (most reliable for textbooks)
+        footer_rect = fitz.Rect(0, height * 0.92, width, height)
+        result = _pick_number_from_zone(footer_rect)
+        if result:
+            return result
+
+        # 2. Header zone (fallback)
+        header_rect = fitz.Rect(0, 0, width, height * 0.08)
+        result = _pick_number_from_zone(header_rect)
+        if result:
+            return result
+
+        # 3. Last resort: 1-based PDF index
+        return str(page_index + 1)
+
+    @staticmethod
+    def _extract_section(full_text: str) -> str:
+        """
+        Find the first plausible heading in the page text.
+        Returns a clean section string like '3.2 Polymorphism', or empty string.
+        """
+        for line in full_text.splitlines():
+            line = line.strip()
+            if not line or len(line) < 4 or len(line) > 80:
+                continue
+            if _HEADING_RE.match(line):
+                return line
+        return ""
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def pdf_parser(self, file_path):
         import fitz
-        import re
         from langchain_core.documents import Document
 
         print(f"Loading PDF... (This may take a minute for large files)")
         doc = fitz.open(file_path)
         documents = []
-        
+
         for i in range(len(doc)):
             page = doc[i]
-            # 1. Extract full text for content
+
+            # 1. Full page text (content)
             full_text_raw = page.get_text()
             full_text = full_text_raw if isinstance(full_text_raw, str) else ""
-            
-            # 2. Extract header text for real page number
-            # Use top 10% of page for header
-            header_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height * 0.1)
-            header_text_raw = page.get_text("text", clip=header_rect)
-            header_text = header_text_raw.strip() if isinstance(header_text_raw, str) else ""
-            
-            # Look for a numeric page number in the header
-            # Ignore numbers preceded by 'Chapter' or 'Section' to avoid false positives
-            clean_header = re.sub(r'(?i)(Chapter|Section|Unit)\s+\d+', '', header_text)
-            page_match = re.search(r'\b(\d+)\b', clean_header)
-            real_page = page_match.group(1) if page_match else str(i + 1)
-            
+
+            # 2. Real page label — footer preferred over header
+            real_page = self._extract_page_number(page, i)
+
+            # 3. Section heading on this page (best-effort)
+            section = self._extract_section(full_text)
+
             documents.append(Document(
                 page_content=full_text,
                 metadata={
                     "source": file_path,
-                    "page": i,
-                    "page_label": real_page
+                    "page": i,           # 0-indexed PDF position (internal use)
+                    "page_label": real_page,  # Human-visible page number
+                    "section": section,       # e.g. "3.2 Polymorphism"
                 }
             ))
-            
-        print(f"Loaded {len(documents)} pages from PDF with extracted page labels.")
+
+        print(f"Loaded {len(documents)} pages from PDF with page labels + section metadata.")
         return documents
 
     def data_chunking(self, data):

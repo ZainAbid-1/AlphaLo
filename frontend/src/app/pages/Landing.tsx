@@ -10,7 +10,7 @@ export default function Landing() {
       provider: 'google',
       options: {
         // Redirects the user to the wizard after successful login
-        redirectTo: 'http://localhost:5173/wizard'
+        redirectTo: `${window.location.origin}/wizard`
       }
     });
 
