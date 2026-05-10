@@ -9,11 +9,10 @@
 ![Pinecone](https://img.shields.io/badge/VectorDB-Pinecone-DC382D)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB_Atlas-47A248)
 ![Mongoose](https://img.shields.io/badge/ODM-Mongoose-880000)
-![Bootstrap](https://img.shields.io/badge/Responsiveness-Bootstrap_5-7952b3)
 ![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-06b6d4)
 ![Redis](https://img.shields.io/badge/Cache-Redis_Upstash-DC382D)
 ![Supabase](https://img.shields.io/badge/Auth-Supabase-3ecf8e)
-![Vercel](https://img.shields.io/badge/Frontend_Deploy-Vercel-DC382D)
+![Vercel](https://img.shields.io/badge/Frontend_Deploy-Vercel-1C3C3C)
 ![Render](https://img.shields.io/badge/Backend_Deploy-Render-46E3B7)
 ![Status](https://img.shields.io/badge/Status-Production--Ready-success)
 
@@ -67,7 +66,6 @@ Each course has an associated set of YouTube lecture links stored in MongoDB —
 | Technology | Purpose |
 |---|---|
 | React 18 + TypeScript | Component-based UI with static typing |
-| Bootstrap 5 | Responsive 12-column grid system |
 | TailwindCSS | Utility-first component-level styling |
 | Vite | Build tool and dev server |
 | `api.ts` (custom) | Centralised HTTP service layer, handles multi-port routing and auth headers |
@@ -261,8 +259,6 @@ uvicorn main:app --reload --port 8000
 | FastAPI Brain | Render (Python Web Service) | Auto-deploy on push to `main` |
 
 All secrets are stored as environment variables in Vercel and Render dashboards — never in source code.
-
-Live URL: [https://alpha-lo.vercel.app](https://alpha-lo.vercel.app)
 
 ---
 
