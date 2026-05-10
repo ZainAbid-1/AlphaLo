@@ -78,6 +78,7 @@ class QuestionRecommender:
         self,
         vector_store,
         queries: list[str],
+        filter: dict | None = None,
         k_per_query: int = 8,
     ) -> list:
         """
@@ -88,7 +89,7 @@ class QuestionRecommender:
 
         async def _single(q: str):
             return await loop.run_in_executor(
-                None, lambda: vector_store.similarity_search(q, k=k_per_query)
+                None, lambda: vector_store.similarity_search(q, k=k_per_query, filter=filter)
             )
 
         results_per_query = await asyncio.gather(*[_single(q) for q in queries])
@@ -147,6 +148,31 @@ class QuestionRecommender:
         return "\n\n".join(parts)
 
     # ------------------------------------------------------------------
+    # Query Expansion
+    # ------------------------------------------------------------------
+
+    async def _generate_conceptual_query(self, question_context: str) -> str:
+        """
+        Uses the LLM to convert a specific exam question into a broader 
+        conceptual search query for a textbook.
+        """
+        prompt = f"""
+        Extract the core theoretical concept or principle being tested in this exam question.
+        Generate a short (3-6 words) search phrase that would find the EXPLANATION of this concept in a textbook.
+        
+        Question: "{question_context}"
+        
+        Return ONLY the search phrase, no quotes or explanation.
+        Example: "Superclass constructors are not inherited" -> "constructor inheritance rules"
+        """
+        try:
+            response = await self.llm.ainvoke(prompt)
+            return response.content.strip().strip('"')
+        except Exception as e:
+            print(f"WARN: Conceptual query expansion failed: {e}")
+            return question_context[:100]
+
+    # ------------------------------------------------------------------
     # Core processing — one question
     # ------------------------------------------------------------------
 
@@ -156,6 +182,7 @@ class QuestionRecommender:
         topic_concepts: list[str],
         vector_store,
         redis,
+        course_id: str | None = None,
     ) -> dict:
         """
         For one exam question:
@@ -191,22 +218,30 @@ class QuestionRecommender:
                 print(f"DEBUG: Cache HIT for recommendation ({cache_key[:20]}...)")
                 return {"original_question": q_item, "recommendation": cached}
 
-        # --- Build 3 parallel Pinecone queries ---
+        # --- Build 4 parallel Pinecone queries ---
         #   Query 1: The actual exam question (direct semantic match)
         q1 = full_q_context
 
-        #   Query 2: Topic concept phrases (broader conceptual coverage)
-        q2 = " ".join(topic_concepts) if topic_concepts else full_q_context
+        #   Query 2: Conceptual Expansion (New: Underlying principle)
+        print(f"DEBUG: Expanding concept for question: {q_text[:40]}...")
+        q2 = await self._generate_conceptual_query(full_q_context)
 
-        #   Query 3: Dedicated end-of-chapter harvest query
-        topic_hint = topic_concepts[0] if topic_concepts else q_text[:60]
-        q3 = (
+        #   Query 3: Topic context (the broader topic being studied)
+        q3 = " ".join(topic_concepts[:3]) if topic_concepts else q2
+
+        #   Query 4: Dedicated end-of-chapter harvest query
+        topic_hint = q2
+        q4 = (
             f"chapter end exercises review problems practice questions "
             f"self-test worked examples {topic_hint}"
         )
 
-        print(f"DEBUG: Firing 3-query Pinecone search for: {q_text[:60]}...")
-        docs = await self._multi_search(vector_store, [q1, q2, q3], k_per_query=8)
+        # --- Build Pinecone Filter ---
+        search_filter = {"course_id": course_id} if course_id else None
+
+        print(f"DEBUG: Firing 4-query Pinecone search (Filter: {search_filter})")
+        print(f"DEBUG: Queries: [1] {q1[:50]}... [2] {q2} [3] {q3[:50]}... [4] {q4[:50]}...")
+        docs = await self._multi_search(vector_store, [q1, q2, q3, q4], filter=search_filter, k_per_query=6)
         context = self._build_context(docs)
 
         # --- LLM Prompt — professional academic study guide ---
@@ -300,6 +335,7 @@ FORMATTING RULES:
     async def get_book_recommendations(
         self,
         exam_questions: list,
+        course_id: str | None = None,
         topic_concepts: list[str] | None = None,
     ) -> list:
         """
@@ -333,9 +369,9 @@ FORMATTING RULES:
             print("WARN: No questions and no concepts — nothing to recommend.")
             return []
 
-        print(f"DEBUG: Fetching {len(exam_questions)} recommendations in parallel (3-query search each)...")
+        print(f"DEBUG: Fetching {len(exam_questions)} recommendations (Course: {course_id}) in parallel...")
         tasks = [
-            self._process_single_question(q, concepts, vector_store, redis)
+            self._process_single_question(q, concepts, vector_store, redis, course_id=course_id)
             for q in exam_questions
         ]
         results = await asyncio.gather(*tasks)

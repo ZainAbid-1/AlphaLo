@@ -13,7 +13,7 @@ async def process_textbook_task(temp_file_path: str, course_id: str, title: str,
     """Parses, chunks, and vectorizes textbook, then saves metadata to MongoDB."""
     try:
         # 1. AI Logic: PDF -> Text -> Chunks -> Pinecone
-        data = parser.pdf_parser(temp_file_path)
+        data = parser.pdf_parser(temp_file_path, course_id)
         chunks = parser.data_chunking(data)
         parser.vectorization(chunks) 
         

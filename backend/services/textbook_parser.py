@@ -96,7 +96,7 @@ class TextbookIngestor:
     # Public API
     # ------------------------------------------------------------------
 
-    def pdf_parser(self, file_path):
+    def pdf_parser(self, file_path, course_id: str):
         import fitz
         from langchain_core.documents import Document
 
@@ -120,6 +120,7 @@ class TextbookIngestor:
             documents.append(Document(
                 page_content=full_text,
                 metadata={
+                    "course_id": course_id,   # ADDED: Tag with course_id for filtering
                     "source": file_path,
                     "page": i,           # 0-indexed PDF position (internal use)
                     "page_label": real_page,  # Human-visible page number
@@ -127,7 +128,7 @@ class TextbookIngestor:
                 }
             ))
 
-        print(f"Loaded {len(documents)} pages from PDF with page labels + section metadata.")
+        print(f"Loaded {len(documents)} pages from PDF with course_id={course_id} and metadata.")
         return documents
 
     def data_chunking(self, data):

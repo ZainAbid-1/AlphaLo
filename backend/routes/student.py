@@ -62,6 +62,7 @@ async def get_book_patterns(
         # 3. Match to Pinecone + LLM
         recommendations = await recommender.get_book_recommendations(
             questions,
+            course_id=course_id,
             topic_concepts=concepts,
         )
         return recommendations
