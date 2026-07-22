@@ -7,9 +7,17 @@ const Instructor = require('../models/Instructor');
 const SyllabusTopic = require('../models/SyllabusTopic');
 const Resource = require('../models/Resource');
 
+// Helper to extract parameters from req.body (JSON payload) or req.query (legacy fallback)
+const getParams = (req) => {
+    if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+        return req.body;
+    }
+    return req.query || {};
+};
+
 // 1. POST University
 exports.addUniversity = async (req, res) => {
-    const { id, name } = req.query;
+    const { id, name } = getParams(req);
     try {
         const university = new University({ id, name });
         await university.save();
@@ -21,7 +29,7 @@ exports.addUniversity = async (req, res) => {
 
 // 2. POST Course
 exports.addCourse = async (req, res) => {
-    const { id, university_id, name } = req.query;
+    const { id, university_id, name } = getParams(req);
     try {
         const course = new Course({ id, university_id, name });
         await course.save();
@@ -33,7 +41,7 @@ exports.addCourse = async (req, res) => {
 
 // 3. POST Topic
 exports.addTopic = async (req, res) => {
-    const { course_id, id, week, topic } = req.query;
+    const { course_id, id, week, topic } = getParams(req);
     try {
         const syllabusTopic = new SyllabusTopic({
             id,
@@ -50,7 +58,7 @@ exports.addTopic = async (req, res) => {
 
 // 4. POST Instructor
 exports.addInstructor = async (req, res) => {
-    const { id, course_id, name, title, avatar } = req.query;
+    const { id, course_id, name, title, avatar } = getParams(req);
     try {
         const instructor = new Instructor({ id, course_id, name, title, avatar });
         await instructor.save();
@@ -63,7 +71,9 @@ exports.addInstructor = async (req, res) => {
 // 5. POST Upload Textbook (Proxy)
 exports.uploadTextbook = async (req, res) => {
     const { course_id } = req.params;
-    const { title, instructor_id } = req.query;
+    const params = getParams(req);
+    const title = params.title || req.query.title;
+    const instructor_id = params.instructor_id || req.query.instructor_id;
     const file = req.file;
 
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
@@ -92,7 +102,10 @@ exports.uploadTextbook = async (req, res) => {
 // 6. POST Upload Past Paper (Proxy)
 exports.uploadPastPaper = async (req, res) => {
     const { course_id } = req.params;
-    const { title, instructor_id, paper_type } = req.query;
+    const params = getParams(req);
+    const title = params.title || req.query.title;
+    const instructor_id = params.instructor_id || req.query.instructor_id;
+    const paper_type = params.paper_type || req.query.paper_type;
     const file = req.file;
 
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
@@ -121,7 +134,7 @@ exports.uploadPastPaper = async (req, res) => {
 // 7. POST Resource
 exports.addResource = async (req, res) => {
     try {
-        const { course_id, instructor_id, title, url, topic } = req.query;
+        const { course_id, instructor_id, title, url, topic } = getParams(req);
         const resource = new Resource({
             course_id,
             instructor_id,

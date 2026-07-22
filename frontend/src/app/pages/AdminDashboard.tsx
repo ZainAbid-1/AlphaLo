@@ -72,8 +72,7 @@ export default function AdminDashboard() {
   const handleAddUniversity = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        const params = new URLSearchParams(uniData).toString();
-        const response = await api.post(`/admin/university?${params}`); 
+        const response = await api.post('/admin/university', uniData); 
         
         console.log('API Response:', response.data);
         showStatus('success', `University ${uniData.name} added successfully!`);
@@ -87,8 +86,7 @@ export default function AdminDashboard() {
   const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        const params = new URLSearchParams(courseData).toString();
-        const response = await api.post(`/admin/course?${params}`); 
+        const response = await api.post('/admin/course', courseData); 
         
         console.log('API Response:', response.data);
         showStatus('success', `Course ${courseData.name} added successfully!`);
@@ -102,8 +100,7 @@ export default function AdminDashboard() {
   const handleAddTopic = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        const params = new URLSearchParams(topicData).toString();
-        const response = await api.post(`/admin/topic?${params}`); 
+        const response = await api.post('/admin/topic', topicData); 
         
         console.log('API Response:', response.data);
         showStatus('success', `Topic added to week ${topicData.week}!`);
@@ -118,8 +115,7 @@ export default function AdminDashboard() {
   const handleAddInstructor = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        const params = new URLSearchParams(instructorData).toString();
-        const response = await api.post(`/admin/instructor?${params}`); 
+        const response = await api.post('/admin/instructor', instructorData); 
         
         console.log('API Response:', response.data);
         showStatus('success', `Instructor ${instructorData.name} added successfully!`);
@@ -139,12 +135,12 @@ export default function AdminDashboard() {
         finalUrl = finalUrl.replace("watch?v=", "embed/");
       }
 
-      const params = new URLSearchParams({
+      const payload = {
         ...resourceData,
         url: finalUrl
-      }).toString();
+      };
       
-      const response = await api.post(`/admin/resource?${params}`); 
+      const response = await api.post('/admin/resource', payload); 
       showStatus('success', `Resource "${resourceData.title}" added!`);
       setResourceData({ course_id: '', instructor_id: '', title: '', url: '', topic: '' });
   } catch (error: any) {

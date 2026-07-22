@@ -33,7 +33,7 @@ def create_llm(temperature=0.3):
 llm_default = None
 llm_precise = None
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://tngqrxlglenllgufrzuc.supabase.co")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 
 # Lazy-loaded JWKS client
 _jwks_client = None
@@ -41,6 +41,11 @@ _jwks_client = None
 def get_jwks_client():
     global _jwks_client
     if _jwks_client is None:
+        if not SUPABASE_URL:
+            raise HTTPException(
+                status_code=500,
+                detail="Server configuration error: SUPABASE_URL environment variable is not configured."
+            )
         print("DEBUG: Initializing JWKS client...")
         jwks_url = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
         _jwks_client = PyJWKClient(jwks_url)
